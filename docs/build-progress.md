@@ -9,8 +9,8 @@ Phase 0 is done. Owner still owes: a named .near account from Meteor Wallet by t
 | Step | What | Who | State |
 |---|---|---|---|
 | S1 | Vault under 30 KB with no std | Gemma | Passed 9 Nov (3,341 bytes, 27 minutes); independent review: ship, 1 fix applied |
-| S2 | tUSDC from the near-sdk example | Gemma | Next |
-| S3 | Hostile token | Gemma | |
+| S2 | tUSDC from the near-sdk example | Gemma | Passed 9 Nov (8 minutes); review batched with S3 |
+| S3 | Hostile token | Gemma | Next |
 | S4 | Collection state, init, mode rule (T9, T23) | Gemma | |
 | S5 | set_vault_code and mint flow (T3b, T8, T15, T22, T24, T26, T29) | Gemma | |
 | S6 | Withdrawals (T1, T10-T14, T16, T17, T20, T21) | Gemma | |

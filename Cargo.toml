@@ -4,6 +4,7 @@ members = [
     "contracts/vault",
     "contracts/test-token",
     "contracts/tusdc",
+    "contracts/hostile-token",
     "tests",
 ]
 resolver = "3"
