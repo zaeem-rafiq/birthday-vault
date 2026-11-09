@@ -1,0 +1,8 @@
+target/
+web/node_modules
+web/out
+web/.next
+.env*.local
+.keys/
+docs/footage/
+.state/
