@@ -19,6 +19,6 @@ A test double that is never deployed for real. Write only `contracts/hostile-tok
 | empty string | Adds 1 to `transfers`. |
 | `fail` | Panics with `transfer refused`. |
 | `huge` | Adds 1 to `transfers`, then returns 100,000 bytes of `x` with `near_sdk::env::value_return`. |
-| `slow` | Adds 1 to `transfers`, then returns a promise that calls this contract's own `slow_done` method with 5 Tgas. Use `Promise::new(env::current_account_id()).function_call("slow_done".to_string(), vec![], NearToken::from_yoctonear(0), Gas::from_tgas(5))`. |
+| `slow` | Adds 1 to `transfers`, then returns a promise that calls this contract's own `slow_done` method with 5 Tgas. Use `let _ = Promise::new(env::current_account_id()).function_call("slow_done".to_string(), vec![], NearToken::from_yoctonear(0), Gas::from_tgas(5)).as_return();`. |
 
-Add `pub fn slow_done(&self)`, which does nothing. Unused arguments need `#[allow(unused_variables)]` on the method. `ft_transfer` returns nothing in Rust except where the table says so, so use `near_sdk::env::promise_return` for `slow`.
+Add `pub fn slow_done(&self)`, which does nothing. Unused arguments need `#[allow(unused_variables)]` on the method. `ft_transfer` has no Rust return type.
