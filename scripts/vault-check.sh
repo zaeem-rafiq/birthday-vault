@@ -65,7 +65,9 @@ fi
 # 4. The contract builds with the plan's command.
 rm -f "$WASM"
 if [ -f contracts/vault/Cargo.toml ] \
-  && cargo near build non-reproducible-wasm --locked --no-abi --manifest-path contracts/vault/Cargo.toml >"$LOG" 2>&1 \
+  && cargo build --locked -p vault --target wasm32-unknown-unknown --release >"$LOG" 2>&1 \
+  && mkdir -p target/near/vault \
+  && cp target/wasm32-unknown-unknown/release/vault.wasm "$WASM" \
   && [ -s "$WASM" ]; then
   pass "vault builds to $WASM"
 else

@@ -4,6 +4,8 @@ Write only `contracts/vault/src/lib.rs`. `tests/tests/vault_spec.rs` holds the 9
 
 **Size:** the wasm must be at most 30 KB. `near-sdk` is too large, so do not use it. Use only `near-sys` 0.4.1 (source in `docs/sources/near-sys-0.4.1/`), with `#![no_std]` and no allocator. Use fixed-size stack buffers. Do not add dependencies.
 
+**Build:** `source scripts/env.sh; cargo build --locked -p vault --target wasm32-unknown-unknown --release`. `cargo near` refuses a crate without near-sdk, so `scripts/vault-check.sh` uses this command.
+
 **File shape**
 
 ```rust
