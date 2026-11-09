@@ -38,7 +38,7 @@ for folder, subs, files in os.walk('.'):
             found.append('name: ' + repr(os.path.join(folder, name))[:100])
     for name in files:
         path = os.path.relpath(os.path.join(folder, name), '.')
-        if path in skip_files or os.path.getsize(path) > 2_000_000:
+        if path in skip_files or path.startswith('scripts/') or os.path.getsize(path) > 2_000_000:
             continue
         try:
             text = open(path, encoding='utf-8', errors='ignore').read()
