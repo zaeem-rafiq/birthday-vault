@@ -1,6 +1,6 @@
 # Vault contract: exact specification
 
-Write only `contracts/vault/src/lib.rs`. `tests/tests/vault_spec.rs` holds the 9 checks it must pass.
+Write only `contracts/vault/src/lib.rs`. `tests/tests/vault_spec.rs` holds the 10 checks it must pass.
 
 **Size:** the wasm must be at most 30 KB. `near-sdk` is too large, so do not use it. Use only `near-sys` 0.4.1 (source in `docs/sources/near-sys-0.4.1/`), with `#![no_std]` and no allocator. Use fixed-size stack buffers. Do not add dependencies.
 

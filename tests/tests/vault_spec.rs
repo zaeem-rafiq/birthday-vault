@@ -1,4 +1,4 @@
-//! The 9 checks for contracts/vault. Build the contract first, then run:
+//! The 10 checks for contracts/vault. Build the contract first, then run:
 //! source scripts/env.sh; cargo test --locked -p tests --test vault_spec -- --test-threads=3
 use near_workspaces::network::Sandbox;
 use near_workspaces::types::NearToken;
@@ -47,9 +47,11 @@ async fn vault_rejects_every_caller_but_parent() -> anyhow::Result<()> {
 #[tokio::test]
 async fn stranger_cannot_call_ft_send() -> anyhow::Result<()> {
     let s = setup().await?;
-    let args = json!({ "token": s.receiver.id(), "receiver": s.stranger.id(), "amount": "1" });
-    let r = s.stranger.call(s.vault.id(), "ft_send").args_json(args).transact().await?;
+    let args = json!({ "token": s.token.id(), "receiver": s.stranger.id(), "amount": "1" });
+    let r = s.stranger.call(s.vault.id(), "ft_send").args_json(args).max_gas().transact().await?;
     assert!(r.is_failure(), "a stranger must not be able to call ft_send");
+    let (_, _, _, _, calls): (String, String, String, String, u32) = s.token.view("last_call").await?.json()?;
+    assert_eq!(calls, 0, "a refused call must not reach the token");
     Ok(())
 }
 
@@ -164,5 +166,18 @@ async fn the_vault_wasm_cannot_add_keys_or_deploy() -> anyhow::Result<()> {
     for bad in ["add_key", "delete_key", "deploy_contract", "deploy_global", "use_global", "delete_account", "stake"] {
         assert!(!imports.iter().any(|n| n.contains(bad)), "the vault imports a forbidden action: {bad}");
     }
+    Ok(())
+}
+
+#[tokio::test]
+async fn ft_send_rejects_a_bad_amount() -> anyhow::Result<()> {
+    let s = setup().await?;
+    for bad in ["abc", "", "340282366920938463463374607431768211456"] {
+        let args = json!({ "token": s.token.id(), "receiver": s.receiver.id(), "amount": bad });
+        let r = s.parent.call(s.vault.id(), "ft_send").args_json(args).max_gas().transact().await?;
+        assert!(r.is_failure(), "the vault must refuse the amount {bad:?}");
+    }
+    let (_, _, _, _, calls): (String, String, String, String, u32) = s.token.view("last_call").await?.json()?;
+    assert_eq!(calls, 0, "a bad amount must not reach the token");
     Ok(())
 }

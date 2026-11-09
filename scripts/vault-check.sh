@@ -126,10 +126,10 @@ fi
 # 6. Every visible check passes.
 cargo near build non-reproducible-wasm --locked --no-abi --manifest-path contracts/test-token/Cargo.toml >"$LOG" 2>&1 || { fail "test token builds" "$(tail -8 "$LOG")"; }
 if cargo test --locked -p tests --test vault_spec -- --test-threads=3 >"$LOG" 2>&1 \
-  && grep -q 'test result: ok. 9 passed' "$LOG"; then
-  pass "all 9 checks in tests/tests/vault_spec.rs passed"
+  && grep -q 'test result: ok. 10 passed' "$LOG"; then
+  pass "all 10 checks in tests/tests/vault_spec.rs passed"
 else
-  fail "all 9 checks in tests/tests/vault_spec.rs passed" "details:"
+  fail "all 10 checks in tests/tests/vault_spec.rs passed" "details:"
   grep -E '^test .* (ok|FAILED)$|panicked|^error' "$LOG" | head -30
   tail -12 "$LOG"
 fi

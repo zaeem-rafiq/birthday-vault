@@ -124,6 +124,7 @@ pub extern "C" fn ft_send() {
     let receiver_len = find_value(input, b"receiver", &mut receiver);
     let mut amount = [0u8; 64];
     let amount_len = find_value(input, b"amount", &mut amount);
+    parse_u128(&amount[..amount_len]);
 
     let mut arg_buf = [0u8; 256];
     let mut arg_ptr = 0;
