@@ -617,7 +617,7 @@ After the site is live, open it signed out and run the whole flow.
    - It writes the collection id and vault ids to gitignored `.state/mainnet.json`. These are public ids, so Hermes may read this file.
 3. Write `scripts/local-real-gift.sh <vault-id>`, which builds the site with real gifts on, serves it on port 4174, and prints the gift link for that vault.
 4. Read the 1Click terms at `docs.near-intents.org/security-compliance/terms-of-service.md`. Report any limit on US users, public front ends or quoting.
-5. Put the exact owner commands, tested on testnet where possible, in `docs/owner-steps.md`. Use `near account import-account using-web-wallet` for MyNearWallet. For any other wallet, use `using-seed-phrase`, which the owner types only in their own Terminal.
+5. Put the exact owner commands, tested on testnet where possible, in `docs/owner-steps.md`. MyNearWallet no longer creates accounts or signs (checked 9 Nov 2026), so the owner uses Meteor Wallet. Use `near account import-account using-seed-phrase`, which the owner types only in their own Terminal.
 
 **STOP by the evening of 11 Nov. Tell the owner the exact NEAR that will be spent, from the measured wasm sizes. Then ask:**
 
