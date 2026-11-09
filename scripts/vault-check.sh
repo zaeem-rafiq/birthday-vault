@@ -7,7 +7,7 @@ cd "$ROOT" || exit 99
 # shellcheck disable=SC1091
 source "$ROOT/scripts/env.sh"
 
-BASE="gemma-test/base2"
+BASE="build/s1-base"
 WASM="target/near/vault/vault.wasm"
 TEST_NAME="vault_rejects_every_caller_but_parent"
 LOG="$(mktemp -t vault-check)"
@@ -17,8 +17,8 @@ pass() { printf 'PASS %s\n' "$1"; }
 fail() { printf 'FAIL %s: %s\n' "$1" "$2"; fails=$((fails + 1)); }
 
 # 1. Rules, plan, docs and this script are unchanged.
-if git diff --quiet "$BASE" -- scripts AGENTS.md PLAN.md docs rust-toolchain.toml tests Cargo.toml Cargo.lock contracts/vault/Cargo.toml \
-  && [ -z "$(git status --porcelain -- scripts AGENTS.md PLAN.md docs rust-toolchain.toml tests Cargo.toml Cargo.lock contracts/vault/Cargo.toml)" ]; then
+if git diff --quiet "$BASE" -- scripts AGENTS.md PLAN.md docs rust-toolchain.toml tests Cargo.toml Cargo.lock contracts/vault/Cargo.toml contracts/test-token \
+  && [ -z "$(git status --porcelain -- scripts AGENTS.md PLAN.md docs rust-toolchain.toml tests Cargo.toml Cargo.lock contracts/vault/Cargo.toml contracts/test-token)" ]; then
   pass "protected files unchanged"
 else
   fail "protected files unchanged" "only contracts/vault/src/lib.rs may change. Restore the other files with git checkout."
@@ -73,7 +73,7 @@ else
   tail -25 "$LOG"
 fi
 
-# 5. The wasm exports the four methods and is under this test's size limit.
+# 5. The wasm exports the four methods and is under the size limit.
 if [ -s "$WASM" ]; then
   exports="$(python3 -I - "$WASM" <<'PY'
 import sys
@@ -112,22 +112,22 @@ PY
   else
     pass "vault exports its four methods"
   fi
-  # The plan's 30 KB production limit is out of scope for this one-hour test.
-  if [ "$size" -le 204800 ]; then
-    pass "vault is $size bytes, within this test's 200 KB limit"
+  if [ "$size" -le 30720 ]; then
+    pass "vault is $size bytes, within the 30 KB limit"
   else
-    fail "vault size" "$size bytes is over this test's 200 KB limit"
+    fail "vault size" "$size bytes is over the 30 KB limit"
   fi
 else
   fail "vault exports its four methods" "no wasm to inspect"
 fi
 
 # 6. Every visible check passes.
+cargo near build non-reproducible-wasm --locked --no-abi --manifest-path contracts/test-token/Cargo.toml >"$LOG" 2>&1 || { fail "test token builds" "$(tail -8 "$LOG")"; }
 if cargo test --locked -p tests --test vault_spec -- --test-threads=3 >"$LOG" 2>&1 \
-  && grep -q 'test result: ok. 7 passed' "$LOG"; then
-  pass "all 7 checks in tests/tests/vault_spec.rs passed"
+  && grep -q 'test result: ok. 9 passed' "$LOG"; then
+  pass "all 9 checks in tests/tests/vault_spec.rs passed"
 else
-  fail "all 7 checks in tests/tests/vault_spec.rs passed" "details:"
+  fail "all 9 checks in tests/tests/vault_spec.rs passed" "details:"
   grep -E '^test .* (ok|FAILED)$|panicked|^error' "$LOG" | head -30
   tail -12 "$LOG"
 fi
