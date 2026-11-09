@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "contracts/collection",
+    "contracts/vault",
     "tests",
 ]
 resolver = "3"

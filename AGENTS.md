@@ -21,6 +21,8 @@ Run ./check before reporting any work as done.
 
 ## Rules for the gemma-test branches
 
+- The spec is `docs/vault-spec.md` and the checks are `tests/tests/vault_spec.rs`. Read both first. Only `contracts/vault/src/lib.rs` may change.
+
 - Start every terminal command that uses cargo or near with `source scripts/env.sh;`.
 - Before you use anything from near-sdk or near-workspaces, find it with grep in `docs/sources/` and note the file and line. Do not call a name you have not seen there. `docs/sources/near-workspaces-0.24.0/tests/` has working examples.
 - Work is done only when `bash scripts/vault-check.sh` prints `VAULT CHECK PASS`. Do not say a step is done without that output.

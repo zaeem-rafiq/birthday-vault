@@ -7,7 +7,7 @@ cd "$ROOT" || exit 99
 # shellcheck disable=SC1091
 source "$ROOT/scripts/env.sh"
 
-BASE="gemma-test/base"
+BASE="gemma-test/base2"
 WASM="target/near/vault/vault.wasm"
 TEST_NAME="vault_rejects_every_caller_but_parent"
 LOG="$(mktemp -t vault-check)"
@@ -17,11 +17,11 @@ pass() { printf 'PASS %s\n' "$1"; }
 fail() { printf 'FAIL %s: %s\n' "$1" "$2"; fails=$((fails + 1)); }
 
 # 1. Rules, plan, docs and this script are unchanged.
-if git diff --quiet "$BASE" -- scripts AGENTS.md PLAN.md docs/sources rust-toolchain.toml \
-  && [ -z "$(git status --porcelain -- scripts AGENTS.md PLAN.md docs/sources rust-toolchain.toml)" ]; then
+if git diff --quiet "$BASE" -- scripts AGENTS.md PLAN.md docs rust-toolchain.toml tests Cargo.toml Cargo.lock contracts/vault/Cargo.toml \
+  && [ -z "$(git status --porcelain -- scripts AGENTS.md PLAN.md docs rust-toolchain.toml tests Cargo.toml Cargo.lock contracts/vault/Cargo.toml)" ]; then
   pass "protected files unchanged"
 else
-  fail "protected files unchanged" "scripts, AGENTS.md, PLAN.md, docs/sources or rust-toolchain.toml changed. Restore them with git checkout."
+  fail "protected files unchanged" "only contracts/vault/src/lib.rs may change. Restore the other files with git checkout."
 fi
 
 # 2. No tool-call text leaked into file names or contents.
@@ -122,20 +122,14 @@ else
   fail "vault exports its four methods" "no wasm to inspect"
 fi
 
-# 6. A real test exists and passes.
-test_file="$(grep -rl "fn $TEST_NAME" tests/tests 2>/dev/null | head -1)"
-if [ -n "$test_file" ] && grep -q 'vault.wasm' "$test_file" && grep -Eq 'tokio::test' "$test_file"; then
-  pass "test $TEST_NAME exists and loads vault.wasm"
-  if cargo test --locked -p tests -- --exact "$TEST_NAME" >"$LOG" 2>&1 \
-    && grep -q "test $TEST_NAME ... ok" "$LOG" \
-    && grep -q 'test result: ok. 1 passed' "$LOG"; then
-    pass "test $TEST_NAME ran and passed"
-  else
-    fail "test $TEST_NAME ran and passed" "last lines:"
-    tail -25 "$LOG"
-  fi
+# 6. Every visible check passes.
+if cargo test --locked -p tests --test vault_spec -- --test-threads=3 >"$LOG" 2>&1 \
+  && grep -q 'test result: ok. 7 passed' "$LOG"; then
+  pass "all 7 checks in tests/tests/vault_spec.rs passed"
 else
-  fail "test $TEST_NAME exists and loads vault.wasm" "put an async #[tokio::test] named $TEST_NAME in tests/tests/ and deploy target/near/vault/vault.wasm in it"
+  fail "all 7 checks in tests/tests/vault_spec.rs passed" "details:"
+  grep -E '^test .* (ok|FAILED)$|panicked|^error' "$LOG" | head -30
+  tail -12 "$LOG"
 fi
 
 rm -f "$LOG"
