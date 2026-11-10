@@ -221,7 +221,9 @@ async fn set_vault_code_needs_balance() -> anyhow::Result<()> {
     let keep = usage * BYTE_COST + 200_000_000_000_000_000_000_000;
     let r = s.coll.as_account().transfer_near(s.root.id(), NearToken::from_yoctonear(spare - keep)).await?;
     assert!(r.is_success());
-    let r = s.coll.call("set_vault_code").args_borsh(std::fs::read("../target/near/vault/vault.wasm")?).max_gas().transact().await?;
+    // The parent calls, so the collection pays no gas and the contract itself must refuse.
+    let r = s.root.call(s.coll.id(), "set_vault_code").args_borsh(std::fs::read("../target/near/vault/vault.wasm")?).max_gas().transact().await?;
     assert!(r.is_failure(), "set_vault_code must refuse when the balance cannot cover the code");
+    assert!(format!("{:?}", r.failures()).contains("not enough balance"), "wrong refusal: {:?}", r.failures());
     Ok(())
 }
