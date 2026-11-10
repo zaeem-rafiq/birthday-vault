@@ -114,7 +114,7 @@ mk.and(reg).then(Self::ext(env::current_account_id()).with_static_gas(MINT_CALLB
 
 # Step S6: withdrawals
 
-Write only `contracts/collection/src/lib.rs`. `tests/tests/collection_withdraw_spec.rs` holds the 12 checks for this step. The 22 checks from steps S4 and S5 must still pass. PLAN.md section 5.4 is the full design.
+Write only `contracts/collection/src/lib.rs`. `tests/tests/collection_withdraw_spec.rs` holds the 13 checks for this step. The 22 checks from steps S4 and S5 must still pass. PLAN.md section 5.4 is the full design.
 
 **Constants**
 
@@ -163,7 +163,7 @@ The vault already keeps stray tokens and sends stray NFTs back. `tests/tests/vau
 
 # Step S7: transfer guard, child claim and standard events
 
-Write only `contracts/collection/src/lib.rs`. `tests/tests/collection_transfer_spec.rs` holds the 11 checks for this step. The 34 checks from steps S4 to S6 must still pass. PLAN.md sections 5.3 and 5.5 are the full design.
+Write only `contracts/collection/src/lib.rs`. `tests/tests/collection_transfer_spec.rs` holds the 11 checks for this step. The 35 checks from steps S4 to S6 must still pass. PLAN.md sections 5.3 and 5.5 are the full design.
 
 **Imports you will add:** `near_contract_standards::non_fungible_token::core::NonFungibleTokenCore` (already there), `near_contract_standards::non_fungible_token::events::{NftMint, NftTransfer}`, `near_sdk::PromiseOrValue`.
 
