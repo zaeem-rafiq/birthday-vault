@@ -1,7 +1,7 @@
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{env, near, near_bindgen, AccountId, Gas, Promise};
 use near_sdk::json_types::U128;
+use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::serde_json::{self as serde_json, Value};
+use near_sdk::{env, near, AccountId, Gas, Promise};
 
 #[near(contract_state)]
 #[derive(Deserialize, Serialize, Default)]
@@ -20,7 +20,12 @@ impl HostileToken {
     }
 
     #[payable]
-    pub fn storage_deposit(&mut self, account_id: Option<AccountId>, registration_only: Option<bool>) -> Value {
+    #[allow(unused_variables)]
+    pub fn storage_deposit(
+        &mut self,
+        account_id: Option<AccountId>,
+        registration_only: Option<bool>,
+    ) -> Value {
         if self.fail_registration {
             env::panic_str("registration refused");
         }
@@ -32,6 +37,7 @@ impl HostileToken {
     }
 
     #[payable]
+    #[allow(unused_variables)]
     pub fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
         match self.mode.as_str() {
             "" => {
@@ -62,6 +68,7 @@ impl HostileToken {
         }
     }
 
+    #[allow(unused_variables)]
     pub fn ft_balance_of(&self, account_id: AccountId) -> U128 {
         U128(1_000_000)
     }

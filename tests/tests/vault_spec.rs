@@ -21,15 +21,48 @@ async fn setup() -> anyhow::Result<Setup> {
     let wasm = std::fs::read("../target/near/vault/vault.wasm")?;
     let worker = near_workspaces::sandbox().await?;
     let root = worker.root_account()?;
-    let parent = root.create_subaccount("parent").initial_balance(NearToken::from_near(40)).transact().await?.into_result()?;
-    let vault_account = parent.create_subaccount("vault").initial_balance(NearToken::from_near(20)).transact().await?.into_result()?;
+    let parent = root
+        .create_subaccount("parent")
+        .initial_balance(NearToken::from_near(40))
+        .transact()
+        .await?
+        .into_result()?;
+    let vault_account = parent
+        .create_subaccount("vault")
+        .initial_balance(NearToken::from_near(20))
+        .transact()
+        .await?
+        .into_result()?;
     let vault = vault_account.deploy(&wasm).await?.into_result()?;
     let token_wasm = std::fs::read("../target/near/test_token/test_token.wasm")?;
-    let token_account = root.create_subaccount("token").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
+    let token_account = root
+        .create_subaccount("token")
+        .initial_balance(NearToken::from_near(10))
+        .transact()
+        .await?
+        .into_result()?;
     let token = token_account.deploy(&token_wasm).await?.into_result()?;
-    let stranger = root.create_subaccount("stranger").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
-    let receiver = root.create_subaccount("receiver").initial_balance(NearToken::from_near(1)).transact().await?.into_result()?;
-    Ok(Setup { _worker: worker, parent, vault_account, vault, token, stranger, receiver })
+    let stranger = root
+        .create_subaccount("stranger")
+        .initial_balance(NearToken::from_near(10))
+        .transact()
+        .await?
+        .into_result()?;
+    let receiver = root
+        .create_subaccount("receiver")
+        .initial_balance(NearToken::from_near(1))
+        .transact()
+        .await?
+        .into_result()?;
+    Ok(Setup {
+        _worker: worker,
+        parent,
+        vault_account,
+        vault,
+        token,
+        stranger,
+        receiver,
+    })
 }
 
 fn send_args(s: &Setup) -> Value {
@@ -39,8 +72,16 @@ fn send_args(s: &Setup) -> Value {
 #[tokio::test]
 async fn vault_rejects_every_caller_but_parent() -> anyhow::Result<()> {
     let s = setup().await?;
-    let r = s.stranger.call(s.vault.id(), "near_send").args_json(send_args(&s)).transact().await?;
-    assert!(r.is_failure(), "a stranger must not be able to call near_send");
+    let r = s
+        .stranger
+        .call(s.vault.id(), "near_send")
+        .args_json(send_args(&s))
+        .transact()
+        .await?;
+    assert!(
+        r.is_failure(),
+        "a stranger must not be able to call near_send"
+    );
     Ok(())
 }
 
@@ -48,9 +89,19 @@ async fn vault_rejects_every_caller_but_parent() -> anyhow::Result<()> {
 async fn stranger_cannot_call_ft_send() -> anyhow::Result<()> {
     let s = setup().await?;
     let args = json!({ "token": s.token.id(), "receiver": s.stranger.id(), "amount": "1" });
-    let r = s.stranger.call(s.vault.id(), "ft_send").args_json(args).max_gas().transact().await?;
-    assert!(r.is_failure(), "a stranger must not be able to call ft_send");
-    let (_, _, _, _, calls): (String, String, String, String, u32) = s.token.view("last_call").await?.json()?;
+    let r = s
+        .stranger
+        .call(s.vault.id(), "ft_send")
+        .args_json(args)
+        .max_gas()
+        .transact()
+        .await?;
+    assert!(
+        r.is_failure(),
+        "a stranger must not be able to call ft_send"
+    );
+    let (_, _, _, _, calls): (String, String, String, String, u32) =
+        s.token.view("last_call").await?.json()?;
     assert_eq!(calls, 0, "a refused call must not reach the token");
     Ok(())
 }
@@ -58,7 +109,12 @@ async fn stranger_cannot_call_ft_send() -> anyhow::Result<()> {
 #[tokio::test]
 async fn vault_cannot_call_its_own_near_send() -> anyhow::Result<()> {
     let s = setup().await?;
-    let r = s.vault_account.call(s.vault.id(), "near_send").args_json(send_args(&s)).transact().await?;
+    let r = s
+        .vault_account
+        .call(s.vault.id(), "near_send")
+        .args_json(send_args(&s))
+        .transact()
+        .await?;
     assert!(r.is_failure(), "the vault itself is not its parent");
     Ok(())
 }
@@ -67,8 +123,17 @@ async fn vault_cannot_call_its_own_near_send() -> anyhow::Result<()> {
 async fn refused_calls_move_no_money() -> anyhow::Result<()> {
     let s = setup().await?;
     let before = s.receiver.view_account().await?.balance;
-    let _ = s.stranger.call(s.vault.id(), "near_send").args_json(send_args(&s)).transact().await?;
-    assert_eq!(s.receiver.view_account().await?.balance, before, "a refused call moved money");
+    let _ = s
+        .stranger
+        .call(s.vault.id(), "near_send")
+        .args_json(send_args(&s))
+        .transact()
+        .await?;
+    assert_eq!(
+        s.receiver.view_account().await?.balance,
+        before,
+        "a refused call moved money"
+    );
     Ok(())
 }
 
@@ -76,10 +141,18 @@ async fn refused_calls_move_no_money() -> anyhow::Result<()> {
 async fn parent_can_call_near_send_and_money_arrives() -> anyhow::Result<()> {
     let s = setup().await?;
     let before = s.receiver.view_account().await?.balance;
-    let r = s.parent.call(s.vault.id(), "near_send").args_json(send_args(&s)).transact().await?;
+    let r = s
+        .parent
+        .call(s.vault.id(), "near_send")
+        .args_json(send_args(&s))
+        .transact()
+        .await?;
     assert!(r.is_success(), "the parent call failed: {:?}", r.failures());
     let after = s.receiver.view_account().await?.balance;
-    assert_eq!(after.as_yoctonear() - before.as_yoctonear(), NearToken::from_near(1).as_yoctonear());
+    assert_eq!(
+        after.as_yoctonear() - before.as_yoctonear(),
+        NearToken::from_near(1).as_yoctonear()
+    );
     Ok(())
 }
 
@@ -87,7 +160,12 @@ async fn parent_can_call_near_send_and_money_arrives() -> anyhow::Result<()> {
 async fn ft_on_transfer_keeps_the_tokens() -> anyhow::Result<()> {
     let s = setup().await?;
     let args = json!({ "sender_id": s.stranger.id(), "amount": "5", "msg": "" });
-    let r = s.stranger.call(s.vault.id(), "ft_on_transfer").args_json(args).transact().await?;
+    let r = s
+        .stranger
+        .call(s.vault.id(), "ft_on_transfer")
+        .args_json(args)
+        .transact()
+        .await?;
     assert!(r.is_success(), "ft_on_transfer failed: {:?}", r.failures());
     assert_eq!(r.json::<String>()?, "0");
     Ok(())
@@ -97,7 +175,12 @@ async fn ft_on_transfer_keeps_the_tokens() -> anyhow::Result<()> {
 async fn nft_on_transfer_sends_stray_nfts_back() -> anyhow::Result<()> {
     let s = setup().await?;
     let args = json!({ "sender_id": s.stranger.id(), "previous_owner_id": s.stranger.id(), "token_id": "1", "msg": "" });
-    let r = s.stranger.call(s.vault.id(), "nft_on_transfer").args_json(args).transact().await?;
+    let r = s
+        .stranger
+        .call(s.vault.id(), "nft_on_transfer")
+        .args_json(args)
+        .transact()
+        .await?;
     assert!(r.is_success(), "nft_on_transfer failed: {:?}", r.failures());
     assert!(r.json::<bool>()?);
     Ok(())
@@ -107,12 +190,22 @@ async fn nft_on_transfer_sends_stray_nfts_back() -> anyhow::Result<()> {
 async fn parent_ft_send_calls_ft_transfer_with_one_yocto() -> anyhow::Result<()> {
     let s = setup().await?;
     let args = json!({ "token": s.token.id(), "receiver": s.receiver.id(), "amount": "12345" });
-    let r = s.parent.call(s.vault.id(), "ft_send").args_json(args).max_gas().transact().await?;
+    let r = s
+        .parent
+        .call(s.vault.id(), "ft_send")
+        .args_json(args)
+        .max_gas()
+        .transact()
+        .await?;
     assert!(r.is_success(), "ft_send failed: {:?}", r.failures());
     let (predecessor, receiver, amount, deposit, calls): (String, String, String, String, u32) =
         s.token.view("last_call").await?.json()?;
     assert_eq!(calls, 1, "ft_transfer must run exactly once");
-    assert_eq!(predecessor, s.vault.id().to_string(), "the vault must be the caller");
+    assert_eq!(
+        predecessor,
+        s.vault.id().to_string(),
+        "the vault must be the caller"
+    );
     assert_eq!(receiver, s.receiver.id().to_string());
     assert_eq!(amount, "12345");
     assert_eq!(deposit, "1", "ft_transfer needs exactly 1 yoctoNEAR");
@@ -162,9 +255,23 @@ fn wasm_imports(wasm: &[u8]) -> Vec<String> {
 async fn the_vault_wasm_cannot_add_keys_or_deploy() -> anyhow::Result<()> {
     let wasm = std::fs::read("../target/near/vault/vault.wasm")?;
     let imports = wasm_imports(&wasm);
-    assert!(imports.iter().any(|n| n == "promise_batch_action_transfer"), "unexpected import list: {imports:?}");
-    for bad in ["add_key", "delete_key", "deploy_contract", "deploy_global", "use_global", "delete_account", "stake"] {
-        assert!(!imports.iter().any(|n| n.contains(bad)), "the vault imports a forbidden action: {bad}");
+    assert!(
+        imports.iter().any(|n| n == "promise_batch_action_transfer"),
+        "unexpected import list: {imports:?}"
+    );
+    for bad in [
+        "add_key",
+        "delete_key",
+        "deploy_contract",
+        "deploy_global",
+        "use_global",
+        "delete_account",
+        "stake",
+    ] {
+        assert!(
+            !imports.iter().any(|n| n.contains(bad)),
+            "the vault imports a forbidden action: {bad}"
+        );
     }
     Ok(())
 }
@@ -174,10 +281,17 @@ async fn ft_send_rejects_a_bad_amount() -> anyhow::Result<()> {
     let s = setup().await?;
     for bad in ["abc", "", "340282366920938463463374607431768211456"] {
         let args = json!({ "token": s.token.id(), "receiver": s.receiver.id(), "amount": bad });
-        let r = s.parent.call(s.vault.id(), "ft_send").args_json(args).max_gas().transact().await?;
+        let r = s
+            .parent
+            .call(s.vault.id(), "ft_send")
+            .args_json(args)
+            .max_gas()
+            .transact()
+            .await?;
         assert!(r.is_failure(), "the vault must refuse the amount {bad:?}");
     }
-    let (_, _, _, _, calls): (String, String, String, String, u32) = s.token.view("last_call").await?.json()?;
+    let (_, _, _, _, calls): (String, String, String, String, u32) =
+        s.token.view("last_call").await?.json()?;
     assert_eq!(calls, 0, "a bad amount must not reach the token");
     Ok(())
 }

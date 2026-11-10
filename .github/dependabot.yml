@@ -1,0 +1,33 @@
+# Monthly update pull requests, grouped so the owner sees one pull request per kind.
+# Major versions are skipped; Claude proposes those as a deliberate task. near-sdk and
+# near-contract-standards are pinned with "=" in Cargo.toml, so they move only by hand.
+# GitHub Actions still update across major versions, so the automatic check keeps working.
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      rust-updates:
+        patterns: ["*"]
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "monthly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      web-updates:
+        patterns: ["*"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      all-actions:
+        patterns: ["*"]

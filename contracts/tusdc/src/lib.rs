@@ -1,5 +1,5 @@
 use near_contract_standards::fungible_token::metadata::{
-    FT_METADATA_SPEC, FungibleTokenMetadata, FungibleTokenMetadataProvider,
+    FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
 };
 use near_contract_standards::fungible_token::{
     FungibleToken, FungibleTokenCore, FungibleTokenResolver,
@@ -11,7 +11,7 @@ use near_sdk::borsh::BorshSerialize;
 use near_sdk::collections::LazyOption;
 use near_sdk::json_types::U128;
 use near_sdk::{
-    AccountId, BorshStorageKey, env, near, require, PanicOnDefault, PromiseOrValue, NearToken,
+    env, near, require, AccountId, BorshStorageKey, NearToken, PanicOnDefault, PromiseOrValue,
 };
 
 #[derive(PanicOnDefault)]
@@ -53,10 +53,7 @@ impl Contract {
     }
 
     pub fn faucet(&mut self, account_id: AccountId) {
-        require!(
-            env::predecessor_account_id() == self.hub,
-            "only the hub"
-        );
+        require!(env::predecessor_account_id() == self.hub, "only the hub");
 
         if !self.token.accounts.contains_key(&account_id) {
             self.token.internal_register_account(&account_id);
@@ -73,10 +70,7 @@ impl Contract {
     }
 
     pub fn register(&mut self, account_id: AccountId) {
-        require!(
-            env::predecessor_account_id() == self.hub,
-            "only the hub"
-        );
+        require!(env::predecessor_account_id() == self.hub, "only the hub");
 
         if !self.token.accounts.contains_key(&account_id) {
             self.token.internal_register_account(&account_id);
@@ -121,13 +115,10 @@ impl FungibleTokenResolver for Contract {
         amount: U128,
     ) -> U128 {
         let (used_amount, burned_amount) =
-            self.token.internal_ft_resolve_transfer(&sender_id, receiver_id, amount);
+            self.token
+                .internal_ft_resolve_transfer(&sender_id, receiver_id, amount);
         if burned_amount > 0 {
-            near_sdk::log!(
-                "Account @{} burned {}",
-                sender_id,
-                burned_amount
-            );
+            near_sdk::log!("Account @{} burned {}", sender_id, burned_amount);
         }
         used_amount.into()
     }

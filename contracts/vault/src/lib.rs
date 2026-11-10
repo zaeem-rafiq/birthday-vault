@@ -22,13 +22,18 @@ fn read_id(reg: u64, buf: &mut [u8]) -> usize {
 fn find_value(input: &[u8], key: &[u8], buf: &mut [u8]) -> usize {
     let mut i = 0;
     while i < input.len() {
-        if i + key.len() + 2 <= input.len() 
-            && input[i] == b'"' 
-            && &input[i + 1..i + 1 + key.len()] == key 
-            && input[i + 1 + key.len()] == b'"' 
+        if i + key.len() + 2 <= input.len()
+            && input[i] == b'"'
+            && &input[i + 1..i + 1 + key.len()] == key
+            && input[i + 1 + key.len()] == b'"'
         {
             let mut cursor = i + key.len() + 2;
-            while cursor < input.len() && (input[cursor] == b' ' || input[cursor] == b'\t' || input[cursor] == b'\r' || input[cursor] == b'\n') {
+            while cursor < input.len()
+                && (input[cursor] == b' '
+                    || input[cursor] == b'\t'
+                    || input[cursor] == b'\r'
+                    || input[cursor] == b'\n')
+            {
                 cursor += 1;
             }
             if cursor >= input.len() || input[cursor] != b':' {
@@ -36,7 +41,12 @@ fn find_value(input: &[u8], key: &[u8], buf: &mut [u8]) -> usize {
                 continue;
             }
             cursor += 1;
-            while cursor < input.len() && (input[cursor] == b' ' || input[cursor] == b'\t' || input[cursor] == b'\r' || input[cursor] == b'\n') {
+            while cursor < input.len()
+                && (input[cursor] == b' '
+                    || input[cursor] == b'\t'
+                    || input[cursor] == b'\r'
+                    || input[cursor] == b'\n')
+            {
                 cursor += 1;
             }
             if cursor >= input.len() || input[cursor] != b'"' {
@@ -62,8 +72,7 @@ fn find_value(input: &[u8], key: &[u8], buf: &mut [u8]) -> usize {
         }
         i += 1;
     }
-    panic_msg(b"key missing");
-    0
+    panic_msg(b"key missing")
 }
 
 fn parse_u128(bytes: &[u8]) -> u128 {
@@ -75,11 +84,11 @@ fn parse_u128(bytes: &[u8]) -> u128 {
         if !b.is_ascii_digit() {
             panic_msg(b"non digit");
         }
-        res = res.checked_mul(10).ok_or(()).and_then(|r| {
-            r.checked_add((b - b'0') as u128).ok_or(())
-        }).unwrap_or_else(|_| {
-            panic_msg(b"overflow")
-        });
+        res = res
+            .checked_mul(10)
+            .ok_or(())
+            .and_then(|r| r.checked_add((b - b'0') as u128).ok_or(()))
+            .unwrap_or_else(|_| panic_msg(b"overflow"));
     }
     res
 }
@@ -128,7 +137,7 @@ pub extern "C" fn ft_send() {
 
     let mut arg_buf = [0u8; 256];
     let mut arg_ptr = 0;
-    
+
     let prefix = b"{\"receiver_id\":\"";
     arg_buf[..prefix.len()].copy_from_slice(prefix);
     arg_ptr += prefix.len();

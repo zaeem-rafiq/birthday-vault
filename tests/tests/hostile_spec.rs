@@ -8,21 +8,43 @@ async fn setup() -> anyhow::Result<(Worker<Sandbox>, Account, Contract)> {
     let wasm = std::fs::read("../target/near/hostile_token/hostile_token.wasm")?;
     let worker = near_workspaces::sandbox().await?;
     let root = worker.root_account()?;
-    let user = root.create_subaccount("user").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
-    let acct = root.create_subaccount("hostile").initial_balance(NearToken::from_near(10)).transact().await?.into_result()?;
+    let user = root
+        .create_subaccount("user")
+        .initial_balance(NearToken::from_near(10))
+        .transact()
+        .await?
+        .into_result()?;
+    let acct = root
+        .create_subaccount("hostile")
+        .initial_balance(NearToken::from_near(10))
+        .transact()
+        .await?
+        .into_result()?;
     let token = acct.deploy(&wasm).await?.into_result()?;
     Ok((worker, user, token))
 }
 
 async fn behave(user: &Account, t: &Contract, mode: &str, fail_reg: bool) -> anyhow::Result<()> {
-    let r = user.call(t.id(), "set_behavior").args_json(json!({ "mode": mode, "fail_registration": fail_reg })).transact().await?;
+    let r = user
+        .call(t.id(), "set_behavior")
+        .args_json(json!({ "mode": mode, "fail_registration": fail_reg }))
+        .transact()
+        .await?;
     assert!(r.is_success(), "set_behavior failed: {:?}", r.failures());
     Ok(())
 }
 
-async fn transfer(user: &Account, t: &Contract) -> anyhow::Result<near_workspaces::result::ExecutionFinalResult> {
-    Ok(user.call(t.id(), "ft_transfer").args_json(json!({ "receiver_id": user.id(), "amount": "1" }))
-        .deposit(NearToken::from_yoctonear(1)).max_gas().transact().await?)
+async fn transfer(
+    user: &Account,
+    t: &Contract,
+) -> anyhow::Result<near_workspaces::result::ExecutionFinalResult> {
+    Ok(user
+        .call(t.id(), "ft_transfer")
+        .args_json(json!({ "receiver_id": user.id(), "amount": "1" }))
+        .deposit(NearToken::from_yoctonear(1))
+        .max_gas()
+        .transact()
+        .await?)
 }
 
 async fn count(t: &Contract) -> anyhow::Result<u32> {
@@ -70,8 +92,12 @@ async fn slow_mode_uses_a_later_receipt() -> anyhow::Result<()> {
 #[tokio::test]
 async fn registration_can_succeed() -> anyhow::Result<()> {
     let (_w, user, t) = setup().await?;
-    let r = user.call(t.id(), "storage_deposit").args_json(json!({ "account_id": user.id(), "registration_only": true }))
-        .deposit(NearToken::from_millinear(2)).transact().await?;
+    let r = user
+        .call(t.id(), "storage_deposit")
+        .args_json(json!({ "account_id": user.id(), "registration_only": true }))
+        .deposit(NearToken::from_millinear(2))
+        .transact()
+        .await?;
     assert!(r.is_success(), "storage_deposit failed: {:?}", r.failures());
     let v: Value = r.json()?;
     assert_eq!(v["total"], "1250000000000000000000");
@@ -82,8 +108,12 @@ async fn registration_can_succeed() -> anyhow::Result<()> {
 async fn registration_can_be_refused() -> anyhow::Result<()> {
     let (_w, user, t) = setup().await?;
     behave(&user, &t, "", true).await?;
-    let r = user.call(t.id(), "storage_deposit").args_json(json!({ "account_id": user.id() }))
-        .deposit(NearToken::from_millinear(2)).transact().await?;
+    let r = user
+        .call(t.id(), "storage_deposit")
+        .args_json(json!({ "account_id": user.id() }))
+        .deposit(NearToken::from_millinear(2))
+        .transact()
+        .await?;
     assert!(r.is_failure());
     Ok(())
 }
@@ -91,7 +121,11 @@ async fn registration_can_be_refused() -> anyhow::Result<()> {
 #[tokio::test]
 async fn balance_is_fixed() -> anyhow::Result<()> {
     let (_w, user, t) = setup().await?;
-    let b: String = t.view("ft_balance_of").args_json(json!({ "account_id": user.id() })).await?.json()?;
+    let b: String = t
+        .view("ft_balance_of")
+        .args_json(json!({ "account_id": user.id() }))
+        .await?
+        .json()?;
     assert_eq!(b, "1000000");
     Ok(())
 }

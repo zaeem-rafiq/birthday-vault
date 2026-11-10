@@ -24,6 +24,12 @@ impl Token {
     }
 
     pub fn last_call(&self) -> (String, String, String, String, u32) {
-        (self.predecessor.clone(), self.receiver.clone(), self.amount.clone(), self.deposit.clone(), self.calls)
+        (
+            self.predecessor.clone(),
+            self.receiver.clone(),
+            self.amount.clone(),
+            self.deposit.clone(),
+            self.calls,
+        )
     }
 }

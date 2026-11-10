@@ -1,12 +1,19 @@
-use near_contract_standards::non_fungible_token::{NonFungibleToken, Token, TokenId};
+// on_vault_created carries the mint's data from mint_vault to the callback, so it needs
+// more than seven arguments.
+#![allow(clippy::too_many_arguments)]
 use near_contract_standards::non_fungible_token::core::NonFungibleTokenCore;
-use near_contract_standards::non_fungible_token::metadata::{NFTContractMetadata, NonFungibleTokenMetadataProvider, NFT_METADATA_SPEC, TokenMetadata};
 use near_contract_standards::non_fungible_token::enumeration::NonFungibleTokenEnumeration;
 use near_contract_standards::non_fungible_token::events::{NftMint, NftTransfer};
+use near_contract_standards::non_fungible_token::metadata::{
+    NFTContractMetadata, NonFungibleTokenMetadataProvider, TokenMetadata, NFT_METADATA_SPEC,
+};
+use near_contract_standards::non_fungible_token::{NonFungibleToken, Token, TokenId};
 use near_sdk::collections::{LazyOption, LookupMap};
-use near_sdk::json_types::{U64, U128};
-use near_sdk::{env, near, AccountId, BorshStorageKey, CryptoHash, NearToken, PanicOnDefault, Promise, Gas, PromiseError, require, PromiseOrValue};
-use near_sdk::serde;
+use near_sdk::json_types::{U128, U64};
+use near_sdk::{
+    env, near, require, AccountId, BorshStorageKey, CryptoHash, Gas, NearToken, PanicOnDefault,
+    Promise, PromiseError, PromiseOrValue,
+};
 
 const ICON: &str = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Crect width='8' height='8' fill='%23c58b3a'/%3E%3C/svg%3E";
 const USDC_REGISTRATION: u128 = 1_250_000_000_000_000_000_000;
@@ -72,7 +79,7 @@ impl Collection {
     fn assert_self_or_parent() {
         let predecessor = env::predecessor_account_id();
         let current = env::current_account_id();
-        if predecessor != current && predecessor.to_string() != Self::parent_of(&current) {
+        if predecessor != current && predecessor.as_str() != Self::parent_of(&current) {
             panic!("only self or parent");
         }
     }
@@ -90,7 +97,9 @@ impl Collection {
         Self::assert_self_or_parent();
 
         let current_id = env::current_account_id().to_string();
-        let is_demo_net = current_id.ends_with(".testnet") || current_id.ends_with(".sandbox") || current_id.ends_with(".test.near");
+        let is_demo_net = current_id.ends_with(".testnet")
+            || current_id.ends_with(".sandbox")
+            || current_id.ends_with(".test.near");
 
         if mode == Mode::Demo {
             if !is_demo_net {
@@ -103,7 +112,8 @@ impl Collection {
             if !Self::is_mainnet_static(&current_id) {
                 panic!("mode does not match network");
             }
-            if !(min_lock_ns.0 >= 86_400_000_000_000 && max_lock_ns.0 <= 1_262_304_000_000_000_000) {
+            if !(min_lock_ns.0 >= 86_400_000_000_000 && max_lock_ns.0 <= 1_262_304_000_000_000_000)
+            {
                 panic!("bad lock limits");
             }
         }
@@ -133,13 +143,19 @@ impl Collection {
             panic!("vault code already set");
         }
 
-        let free_balance = env::account_balance().as_yoctonear() - (env::storage_usage() as u128 * env::storage_byte_cost().as_yoctonear());
-        let required = (vault_code.len() as u128 * 100_000_000_000_000_000_000u128) + 100_000_000_000_000_000_000_000u128;
+        let free_balance = env::account_balance().as_yoctonear()
+            - (env::storage_usage() as u128 * env::storage_byte_cost().as_yoctonear());
+        let required = (vault_code.len() as u128 * 100_000_000_000_000_000_000u128)
+            + 100_000_000_000_000_000_000_000u128;
         if free_balance < required {
             panic!("not enough balance");
         }
 
-        self.vault_code_hash = Some(env::sha256(&vault_code).try_into().expect("sha256 must return 32 bytes"));
+        self.vault_code_hash = Some(
+            env::sha256(&vault_code)
+                .try_into()
+                .expect("sha256 must return 32 bytes"),
+        );
         Promise::new(env::current_account_id())
             .deploy_global_contract(vault_code)
             .detach();
@@ -175,9 +191,17 @@ impl Collection {
     }
 
     #[payable]
-    pub fn mint_vault(&mut self, child_id: AccountId, unlock_ns: U64, title: Option<String>) -> Promise {
+    pub fn mint_vault(
+        &mut self,
+        child_id: AccountId,
+        unlock_ns: U64,
+        title: Option<String>,
+    ) -> Promise {
         let deposit = env::attached_deposit();
-        require!(deposit.as_yoctonear() >= MINT_COST, "deposit below mint cost");
+        require!(
+            deposit.as_yoctonear() >= MINT_COST,
+            "deposit below mint cost"
+        );
         require!(self.vault_code_hash.is_some(), "vault code not set");
 
         let guardian = env::predecessor_account_id();
@@ -188,12 +212,18 @@ impl Collection {
             let s = id.to_string();
             s == coll_id || s.ends_with(&format!(".{}", coll_id))
         };
-        require!(!is_invalid(&guardian) && !is_invalid(&child_id), "invalid account");
+        require!(
+            !is_invalid(&guardian) && !is_invalid(&child_id),
+            "invalid account"
+        );
 
         let now = env::block_timestamp();
         let min_unlock = now.checked_add(self.min_lock_ns).expect("overflow");
         let max_unlock = now.checked_add(self.max_lock_ns).expect("overflow");
-        require!(unlock_ns.0 >= min_unlock && unlock_ns.0 <= max_unlock, "bad unlock time");
+        require!(
+            unlock_ns.0 >= min_unlock && unlock_ns.0 <= max_unlock,
+            "bad unlock time"
+        );
 
         if let Some(ref t) = title {
             require!(t.len() <= 64, "title too long");
@@ -208,29 +238,58 @@ impl Collection {
         let hash = self.vault_code_hash.unwrap();
         let reg = Promise::new(self.usdc.clone()).function_call(
             "storage_deposit".to_string(),
-            near_sdk::serde_json::to_vec(&near_sdk::serde_json::json!({"account_id": vault_id, "registration_only": true})).unwrap(),
+            near_sdk::serde_json::to_vec(
+                &near_sdk::serde_json::json!({"account_id": vault_id, "registration_only": true}),
+            )
+            .unwrap(),
             NearToken::from_yoctonear(USDC_REGISTRATION),
             REG_GAS,
         );
-        let mk = Promise::new(vault_id.clone().parse::<AccountId>().unwrap()).create_account().use_global_contract(hash).transfer(NearToken::from_yoctonear(VAULT_FUNDING));
+        let mk = Promise::new(vault_id.clone().parse::<AccountId>().unwrap())
+            .create_account()
+            .use_global_contract(hash)
+            .transfer(NearToken::from_yoctonear(VAULT_FUNDING));
 
         mk.and(reg).then(
             Self::ext(env::current_account_id())
                 .with_static_gas(MINT_CALLBACK_GAS)
-                .on_vault_created(token_id, guardian.clone(), child_id, unlock_ns, title, guardian, deposit.as_yoctonear()),
+                .on_vault_created(
+                    token_id,
+                    guardian.clone(),
+                    child_id,
+                    unlock_ns,
+                    title,
+                    guardian,
+                    deposit.as_yoctonear(),
+                ),
         )
     }
 
     #[private]
-    pub fn on_vault_created(&mut self, token_id: TokenId, guardian: AccountId, child: AccountId, unlock_ns: U64, title: Option<String>, payer: AccountId, deposit: u128) -> bool {
+    pub fn on_vault_created(
+        &mut self,
+        token_id: TokenId,
+        guardian: AccountId,
+        child: AccountId,
+        unlock_ns: U64,
+        title: Option<String>,
+        payer: AccountId,
+        deposit: u128,
+    ) -> bool {
         let created = !matches!(env::promise_result_checked(0, 0), Err(PromiseError::Failed));
         let registered = !matches!(env::promise_result_checked(1, 0), Err(PromiseError::Failed));
 
         if created && registered {
             let before = env::storage_usage();
             let metadata = TokenMetadata {
-                title: Some(title.clone().unwrap_or_else(|| "Birthday Vault".to_string())),
-                description: Some("A birthday gift that stays locked until the child's birthday.".to_string()),
+                title: Some(
+                    title
+                        .clone()
+                        .unwrap_or_else(|| "Birthday Vault".to_string()),
+                ),
+                description: Some(
+                    "A birthday gift that stays locked until the child's birthday.".to_string(),
+                ),
                 media: Some(VAULT_MEDIA.to_string()),
                 media_hash: None,
                 copies: Some(1),
@@ -242,24 +301,35 @@ impl Collection {
                 reference: None,
                 reference_hash: None,
             };
-            self.nft.internal_mint_with_refund(token_id.clone(), guardian.clone(), Some(metadata), None);
+            self.nft.internal_mint_with_refund(
+                token_id.clone(),
+                guardian.clone(),
+                Some(metadata),
+                None,
+            );
             NftMint {
                 owner_id: &guardian,
                 token_ids: &[token_id.as_str()],
                 memo: None,
-            }.emit();
-            self.vaults.insert(&token_id, &VaultState {
-                guardian,
-                child,
-                unlock_ns: unlock_ns.0,
-                created_ns: env::block_timestamp(),
-                pending: 0,
-            });
+            }
+            .emit();
+            self.vaults.insert(
+                &token_id,
+                &VaultState {
+                    guardian,
+                    child,
+                    unlock_ns: unlock_ns.0,
+                    created_ns: env::block_timestamp(),
+                    pending: 0,
+                },
+            );
             let byte_cost = env::storage_byte_cost().as_yoctonear();
             let storage_cost = (env::storage_usage() - before) as u128 * byte_cost;
             let refund = deposit - VAULT_FUNDING - USDC_REGISTRATION - storage_cost;
             if refund > 1 {
-                Promise::new(payer).transfer(NearToken::from_yoctonear(refund));
+                Promise::new(payer)
+                    .transfer(NearToken::from_yoctonear(refund))
+                    .detach();
             }
             true
         } else {
@@ -271,7 +341,9 @@ impl Collection {
                 refund -= USDC_REGISTRATION;
             }
             if refund > 1 {
-                Promise::new(payer).transfer(NearToken::from_yoctonear(refund));
+                Promise::new(payer)
+                    .transfer(NearToken::from_yoctonear(refund))
+                    .detach();
             }
             false
         }
@@ -295,27 +367,48 @@ impl Collection {
 
     pub fn vault_info_by_account(&self, vault_id: AccountId) -> near_sdk::serde_json::Value {
         let coll_id = env::current_account_id().to_string();
-        if !vault_id.to_string().ends_with(&format!(".{}", coll_id)) {
+        if !vault_id.as_str().ends_with(&format!(".{}", coll_id)) {
             return near_sdk::serde_json::Value::Null;
         }
-        let token_id = vault_id.to_string().split('.').next().unwrap_or_default().to_string();
-        self.vault_info(token_id).unwrap_or(near_sdk::serde_json::Value::Null)
+        let token_id = vault_id
+            .as_str()
+            .split('.')
+            .next()
+            .unwrap_or_default()
+            .to_string();
+        self.vault_info(token_id)
+            .unwrap_or(near_sdk::serde_json::Value::Null)
     }
 
     #[payable]
-    pub fn withdraw(&mut self, token_id: TokenId, ft_contract: AccountId, amount: U128, receiver_id: Option<AccountId>) -> Promise {
+    pub fn withdraw(
+        &mut self,
+        token_id: TokenId,
+        ft_contract: AccountId,
+        amount: U128,
+        receiver_id: Option<AccountId>,
+    ) -> Promise {
         near_sdk::assert_one_yocto();
         require!(env::prepaid_gas() >= MIN_WITHDRAW_GAS, "not enough gas");
         require!(self.vaults.contains_key(&token_id), "no such vault");
         let mut v = self.vaults.get(&token_id).unwrap();
         require!(env::block_timestamp() >= v.unlock_ns, "locked");
-        let owner = self.nft.owner_by_id.get(&token_id).expect("owner not found");
+        let owner = self
+            .nft
+            .owner_by_id
+            .get(&token_id)
+            .expect("owner not found");
         require!(env::predecessor_account_id() == owner, "only the owner");
         require!(v.pending == 0, "busy: a withdrawal is still settling");
         require!(amount.0 > 0, "amount must be positive");
         let receiver = receiver_id.unwrap_or(owner.clone());
         let vault_id = format!("{}.{}", token_id, env::current_account_id());
-        require!(receiver != vault_id.parse::<AccountId>().unwrap() && receiver != env::current_account_id() && receiver != ft_contract, "invalid receiver");
+        require!(
+            receiver != vault_id.parse::<AccountId>().unwrap()
+                && receiver != env::current_account_id()
+                && receiver != ft_contract,
+            "invalid receiver"
+        );
         v.pending += 1;
         self.vaults.insert(&token_id, &v);
         Promise::new(vault_id.parse::<AccountId>().unwrap()).function_call(
@@ -331,19 +424,32 @@ impl Collection {
     }
 
     #[payable]
-    pub fn withdraw_near(&mut self, token_id: TokenId, amount: U128, receiver_id: Option<AccountId>) -> Promise {
+    pub fn withdraw_near(
+        &mut self,
+        token_id: TokenId,
+        amount: U128,
+        receiver_id: Option<AccountId>,
+    ) -> Promise {
         near_sdk::assert_one_yocto();
         require!(env::prepaid_gas() >= MIN_WITHDRAW_GAS, "not enough gas");
         require!(self.vaults.contains_key(&token_id), "no such vault");
         let mut v = self.vaults.get(&token_id).unwrap();
         require!(env::block_timestamp() >= v.unlock_ns, "locked");
-        let owner = self.nft.owner_by_id.get(&token_id).expect("owner not found");
+        let owner = self
+            .nft
+            .owner_by_id
+            .get(&token_id)
+            .expect("owner not found");
         require!(env::predecessor_account_id() == owner, "only the owner");
         require!(v.pending == 0, "busy: a withdrawal is still settling");
         require!(amount.0 > 0, "amount must be positive");
         let receiver = receiver_id.unwrap_or(owner.clone());
         let vault_id = format!("{}.{}", token_id, env::current_account_id());
-        require!(receiver != vault_id.parse::<AccountId>().unwrap() && receiver != env::current_account_id(), "invalid receiver");
+        require!(
+            receiver != vault_id.parse::<AccountId>().unwrap()
+                && receiver != env::current_account_id(),
+            "invalid receiver"
+        );
         v.pending += 1;
         self.vaults.insert(&token_id, &v);
         Promise::new(vault_id.parse::<AccountId>().unwrap()).function_call(
@@ -359,7 +465,13 @@ impl Collection {
     }
 
     #[private]
-    pub fn on_withdraw(&mut self, token_id: TokenId, ft_contract: Option<AccountId>, receiver_id: AccountId, amount: U128) -> bool {
+    pub fn on_withdraw(
+        &mut self,
+        token_id: TokenId,
+        ft_contract: Option<AccountId>,
+        receiver_id: AccountId,
+        amount: U128,
+    ) -> bool {
         let ok = !matches!(env::promise_result_checked(0, 0), Err(PromiseError::Failed));
         if let Some(mut v) = self.vaults.get(&token_id) {
             v.pending = v.pending.saturating_sub(1);
@@ -382,28 +494,41 @@ impl Collection {
     }
 
     fn guard(&self, token_id: &TokenId, receiver: &AccountId) {
-        let v = self.vaults.get(token_id).unwrap_or_else(|| env::panic_str("no such vault"));
+        let v = self
+            .vaults
+            .get(token_id)
+            .unwrap_or_else(|| env::panic_str("no such vault"));
         require!(v.pending == 0, "busy: a withdrawal is still settling");
         let me = env::current_account_id();
-        require!(*receiver != me && !receiver.as_str().ends_with(&format!(".{me}")), "invalid receiver");
+        require!(
+            *receiver != me && !receiver.as_str().ends_with(&format!(".{me}")),
+            "invalid receiver"
+        );
         let owner = self.nft.owner_by_id.get(token_id).unwrap();
         if env::block_timestamp() < v.unlock_ns {
             require!(env::predecessor_account_id() == owner, "only the owner");
-            require!(*receiver == v.guardian || *receiver == v.child, "locked: only guardian and child");
+            require!(
+                *receiver == v.guardian || *receiver == v.child,
+                "locked: only guardian and child"
+            );
         }
     }
 
     #[payable]
     pub fn claim_as_child(&mut self, token_id: TokenId) {
         near_sdk::assert_one_yocto();
-        let v = self.vaults.get(&token_id).unwrap_or_else(|| env::panic_str("no such vault"));
+        let v = self
+            .vaults
+            .get(&token_id)
+            .unwrap_or_else(|| env::panic_str("no such vault"));
         require!(env::predecessor_account_id() == v.child, "only the child");
         require!(env::block_timestamp() >= v.unlock_ns, "locked");
         let owner = self.nft.owner_by_id.get(&token_id).unwrap();
         require!(owner == v.guardian, "the guardian no longer holds it");
         require!(v.pending == 0, "busy: a withdrawal is still settling");
 
-        self.nft.internal_transfer_unguarded(&token_id, &owner, &v.child);
+        self.nft
+            .internal_transfer_unguarded(&token_id, &owner, &v.child);
         NftTransfer {
             old_owner_id: &owner,
             new_owner_id: &v.child,
@@ -429,7 +554,12 @@ impl NonFungibleTokenEnumeration for Collection {
         self.nft.nft_supply_for_owner(account_id)
     }
 
-    fn nft_tokens_for_owner(&self, account_id: AccountId, from_index: Option<U128>, limit: Option<u64>) -> Vec<Token> {
+    fn nft_tokens_for_owner(
+        &self,
+        account_id: AccountId,
+        from_index: Option<U128>,
+        limit: Option<u64>,
+    ) -> Vec<Token> {
         self.nft.nft_tokens_for_owner(account_id, from_index, limit)
     }
 }
@@ -444,14 +574,28 @@ impl NonFungibleTokenMetadataProvider for Collection {
 #[near]
 impl NonFungibleTokenCore for Collection {
     #[payable]
-    fn nft_transfer(&mut self, receiver_id: AccountId, token_id: TokenId, approval_id: Option<u64>, memo: Option<String>) {
+    fn nft_transfer(
+        &mut self,
+        receiver_id: AccountId,
+        token_id: TokenId,
+        approval_id: Option<u64>,
+        memo: Option<String>,
+    ) {
         self.guard(&token_id, &receiver_id);
-        self.nft.nft_transfer(receiver_id, token_id, approval_id, memo);
+        self.nft
+            .nft_transfer(receiver_id, token_id, approval_id, memo);
     }
 
     #[payable]
     #[allow(unused_variables)]
-    fn nft_transfer_call(&mut self, receiver_id: AccountId, token_id: TokenId, approval_id: Option<u64>, memo: Option<String>, msg: String) -> PromiseOrValue<bool> {
+    fn nft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        token_id: TokenId,
+        approval_id: Option<u64>,
+        memo: Option<String>,
+        msg: String,
+    ) -> PromiseOrValue<bool> {
         env::panic_str("disabled: use nft_transfer")
     }
 

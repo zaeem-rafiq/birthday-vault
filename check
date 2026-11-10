@@ -1,0 +1,39 @@
+#!/bin/bash
+# Runs every check for the contracts: the secret scan, format, lint, the wasm build of every
+# contract, unit tests and sandbox tests. Exits non-zero as soon as any check fails.
+# Phase 3 adds the feature map (scripts/check-features) and the web checks, because every
+# FEATURES.md row needs a web end-to-end test as its first proof.
+set -euo pipefail
+cd "$(dirname "$0")"
+# shellcheck disable=SC1091
+source scripts/env.sh
+
+# Secret scan (gitleaks): no password or key in saved history, staged edits, unsaved edits,
+# or new files not yet added to git. -v names the file, line and rule; --redact hides the value.
+gitleaks git -v --no-banner --redact --log-level warn .
+gitleaks git -v --pre-commit --staged --no-banner --redact --log-level warn .
+gitleaks git -v --pre-commit --no-banner --redact --log-level warn .
+git ls-files --others --exclude-standard -z | xargs -0 -r -n1 gitleaks dir -v --no-banner --redact --log-level warn --
+
+# Format and lint. Contracts are linted for wasm, because near-sdk refuses a native build.
+cargo fmt --all --check
+cargo clippy --locked -p tests --all-targets -- -D warnings
+cargo clippy --locked --target wasm32-unknown-unknown --release \
+  -p vault -p collection -p tusdc -p hostile-token -p test-token -p demo_hub -- -D warnings
+
+# Wasm builds, with the commands the deploy scripts use. The vault must stay under 30 KB,
+# because every KB costs 0.1 NEAR of burned money on mainnet.
+cargo build --locked -p vault --target wasm32-unknown-unknown --release
+mkdir -p target/near/vault
+cp target/wasm32-unknown-unknown/release/vault.wasm target/near/vault/vault.wasm
+size=$(wc -c < target/near/vault/vault.wasm)
+if [ "$size" -gt 30720 ]; then echo "vault.wasm is $size bytes, over the 30720-byte limit"; exit 1; fi
+for c in test-token tusdc hostile-token collection demo-hub; do
+  cargo near build non-reproducible-wasm --locked --no-abi --manifest-path "contracts/$c/Cargo.toml"
+done
+
+# Sandbox tests for plan section 6. Each test file starts its own sandboxes. The contracts have
+# no Rust unit tests: near-sdk refuses a native build without its unit-testing feature, so even
+# the Production rules (T9) are tested in the sandbox, on an id written into sandbox state.
+cargo test --locked -p tests -- --test-threads=4
+echo "CHECK PASS"

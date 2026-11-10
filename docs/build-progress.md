@@ -34,3 +34,10 @@ From S4 on, skip the full reference contract. Prove each check with mutants of G
 ## Method change, 9 Nov evening
 
 Before Gemma starts a step, Claude proves its checks against a hidden reference and breaks the reference on purpose. S5 lost most of Gemma's hour to a check that could never pass, because the network refused the setup transaction.
+
+## S9 notes, 9 Nov night
+
+- T9 `production_mint_validation` and T24 `mint_state_fits_cost` are in `tests/tests/collection_limits_spec.rs`. T9 writes `bv.near` into sandbox state, because the sandbox has no `near` registrar. At maximum lengths a mint stores 1,056 bytes, so funding, registration and 1.3 times the state need 0.0175 NEAR of the 0.025 NEAR MINT_COST.
+- T26 `mint_before_distribution_refunds` has no test of its own. The sandbox cannot hold back global code distribution, so the timing cannot be forced. Its refund path is the failed-creation path, which `mint_fails_cleanly_if_account_exists` covers.
+- T27 is covered by `hub_limits_hold`, `hub_auth` and `hub_keys_are_reusable_within_limits`. T28 is `hub_rejects_bad_keys`.
+- `./check` covers the secret scan, format, clippy, wasm builds, unit tests and sandbox tests. Phase 3 adds `scripts/check-features`, `FEATURES.md` and the web checks, because every feature row needs a web end-to-end test first.

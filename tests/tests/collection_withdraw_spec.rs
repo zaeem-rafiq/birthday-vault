@@ -25,7 +25,12 @@ struct Setup {
 }
 
 async fn account(root: &Account, name: &str, near: u128) -> anyhow::Result<Account> {
-    Ok(root.create_subaccount(name).initial_balance(NearToken::from_near(near)).transact().await?.into_result()?)
+    Ok(root
+        .create_subaccount(name)
+        .initial_balance(NearToken::from_near(near))
+        .transact()
+        .await?
+        .into_result()?)
 }
 
 async fn now(worker: &Worker<Sandbox>) -> anyhow::Result<u64> {
@@ -40,25 +45,77 @@ async fn setup() -> anyhow::Result<Setup> {
     let guardian = account(&root, "guardian", 20).await?;
     let child = account(&root, "child", 5).await?;
     let friend = account(&root, "friend", 5).await?;
-    let usdc = account(&root, "usdc", 10).await?.deploy(&std::fs::read("../target/near/tusdc/tusdc.wasm")?).await?.into_result()?;
-    assert!(usdc.call("new").args_json(json!({ "hub_id": root.id() })).transact().await?.is_success());
-    let hostile = account(&root, "hostile", 10).await?.deploy(&std::fs::read("../target/near/hostile_token/hostile_token.wasm")?).await?.into_result()?;
-    let coll = account(&root, "bv", 30).await?.deploy(&std::fs::read("../target/near/collection/collection.wasm")?).await?.into_result()?;
+    let usdc = account(&root, "usdc", 10)
+        .await?
+        .deploy(&std::fs::read("../target/near/tusdc/tusdc.wasm")?)
+        .await?
+        .into_result()?;
+    assert!(usdc
+        .call("new")
+        .args_json(json!({ "hub_id": root.id() }))
+        .transact()
+        .await?
+        .is_success());
+    let hostile = account(&root, "hostile", 10)
+        .await?
+        .deploy(&std::fs::read(
+            "../target/near/hostile_token/hostile_token.wasm",
+        )?)
+        .await?
+        .into_result()?;
+    let coll = account(&root, "bv", 30)
+        .await?
+        .deploy(&std::fs::read("../target/near/collection/collection.wasm")?)
+        .await?
+        .into_result()?;
     let r = coll.call("new").args_json(json!({ "usdc": usdc.id(), "mode": "Demo", "min_lock_ns": "1000000000", "max_lock_ns": "3600000000000" })).transact().await?;
     assert!(r.is_success(), "init failed: {:?}", r.failures());
-    let r = coll.call("set_vault_code").args_borsh(std::fs::read("../target/near/vault/vault.wasm")?).max_gas().transact().await?;
+    let r = coll
+        .call("set_vault_code")
+        .args_borsh(std::fs::read("../target/near/vault/vault.wasm")?)
+        .max_gas()
+        .transact()
+        .await?;
     assert!(r.is_success(), "set_vault_code failed: {:?}", r.failures());
     for who in [guardian.id(), child.id(), friend.id()] {
-        assert!(root.call(usdc.id(), "register").args_json(json!({ "account_id": who })).transact().await?.is_success());
+        assert!(root
+            .call(usdc.id(), "register")
+            .args_json(json!({ "account_id": who }))
+            .transact()
+            .await?
+            .is_success());
     }
     let unlock = now(&worker).await? + 5_000_000_000;
-    let minted: bool = guardian.call(coll.id(), "mint_vault")
-        .args_json(json!({ "child_id": child.id(), "unlock_ns": unlock.to_string(), "title": null }))
-        .deposit(NearToken::from_yoctonear(MINT_COST)).gas(Gas::from_tgas(100)).transact().await?.json()?;
+    let minted: bool = guardian
+        .call(coll.id(), "mint_vault")
+        .args_json(
+            json!({ "child_id": child.id(), "unlock_ns": unlock.to_string(), "title": null }),
+        )
+        .deposit(NearToken::from_yoctonear(MINT_COST))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?
+        .json()?;
     assert!(minted, "the mint must succeed");
     let vault: AccountId = format!("bv-1.{}", coll.id()).parse()?;
-    assert!(root.call(usdc.id(), "faucet").args_json(json!({ "account_id": vault })).transact().await?.is_success());
-    Ok(Setup { worker, root, guardian, child, friend, coll, usdc, hostile, vault, unlock })
+    assert!(root
+        .call(usdc.id(), "faucet")
+        .args_json(json!({ "account_id": vault }))
+        .transact()
+        .await?
+        .is_success());
+    Ok(Setup {
+        worker,
+        root,
+        guardian,
+        child,
+        friend,
+        coll,
+        usdc,
+        hostile,
+        vault,
+        unlock,
+    })
 }
 
 async fn wait_unlock(s: &Setup) -> anyhow::Result<()> {
@@ -69,35 +126,74 @@ async fn wait_unlock(s: &Setup) -> anyhow::Result<()> {
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn call_withdraw(s: &Setup, who: &Account, token: &str, ft: &AccountId, amount: u128, receiver: Option<&AccountId>, tgas: u64, yocto: u128) -> anyhow::Result<ExecutionFinalResult> {
+async fn call_withdraw(
+    s: &Setup,
+    who: &Account,
+    token: &str,
+    ft: &AccountId,
+    amount: u128,
+    receiver: Option<&AccountId>,
+    tgas: u64,
+    yocto: u128,
+) -> anyhow::Result<ExecutionFinalResult> {
     Ok(who.call(s.coll.id(), "withdraw")
         .args_json(json!({ "token_id": token, "ft_contract": ft, "amount": amount.to_string(), "receiver_id": receiver }))
         .deposit(NearToken::from_yoctonear(yocto)).gas(Gas::from_tgas(tgas)).transact().await?)
 }
 
-async fn withdraw(s: &Setup, ft: &AccountId, amount: u128, receiver: Option<&AccountId>) -> anyhow::Result<ExecutionFinalResult> {
+async fn withdraw(
+    s: &Setup,
+    ft: &AccountId,
+    amount: u128,
+    receiver: Option<&AccountId>,
+) -> anyhow::Result<ExecutionFinalResult> {
     call_withdraw(s, &s.guardian, "bv-1", ft, amount, receiver, 100, 1).await
 }
 
-async fn withdraw_near(s: &Setup, amount: u128, receiver: Option<&AccountId>) -> anyhow::Result<ExecutionFinalResult> {
-    Ok(s.guardian.call(s.coll.id(), "withdraw_near")
-        .args_json(json!({ "token_id": "bv-1", "amount": amount.to_string(), "receiver_id": receiver }))
-        .deposit(NearToken::from_yoctonear(1)).gas(Gas::from_tgas(100)).transact().await?)
+async fn withdraw_near(
+    s: &Setup,
+    amount: u128,
+    receiver: Option<&AccountId>,
+) -> anyhow::Result<ExecutionFinalResult> {
+    Ok(s.guardian
+        .call(s.coll.id(), "withdraw_near")
+        .args_json(
+            json!({ "token_id": "bv-1", "amount": amount.to_string(), "receiver_id": receiver }),
+        )
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?)
 }
 
 async fn set_mode(s: &Setup, mode: &str) -> anyhow::Result<()> {
-    let r = s.hostile.call("set_behavior").args_json(json!({ "mode": mode, "fail_registration": false })).transact().await?;
+    let r = s
+        .hostile
+        .call("set_behavior")
+        .args_json(json!({ "mode": mode, "fail_registration": false }))
+        .transact()
+        .await?;
     assert!(r.is_success());
     Ok(())
 }
 
 async fn pending(s: &Setup) -> anyhow::Result<u64> {
-    let info: Value = s.coll.view("vault_info").args_json(json!({ "token_id": "bv-1" })).await?.json()?;
+    let info: Value = s
+        .coll
+        .view("vault_info")
+        .args_json(json!({ "token_id": "bv-1" }))
+        .await?
+        .json()?;
     Ok(info["pending"].as_u64().expect("pending is a number"))
 }
 
 async fn usdc_balance(s: &Setup, who: &AccountId) -> anyhow::Result<u128> {
-    let b: String = s.usdc.view("ft_balance_of").args_json(json!({ "account_id": who })).await?.json()?;
+    let b: String = s
+        .usdc
+        .view("ft_balance_of")
+        .args_json(json!({ "account_id": who }))
+        .await?
+        .json()?;
     Ok(b.parse()?)
 }
 
@@ -106,7 +202,8 @@ fn fails_with(r: &ExecutionFinalResult, msg: &str) -> bool {
 }
 
 fn withdraw_events(r: &ExecutionFinalResult) -> Vec<Value> {
-    r.logs().iter()
+    r.logs()
+        .iter()
         .filter_map(|l| l.strip_prefix("EVENT_JSON:"))
         .filter_map(|j| serde_json::from_str::<Value>(j).ok())
         .filter(|e| e["standard"] == "birthday_vault" && e["event"] == "withdraw")
@@ -117,7 +214,11 @@ fn withdraw_events(r: &ExecutionFinalResult) -> Vec<Value> {
 async fn withdraw_before_unlock_fails() -> anyhow::Result<()> {
     let s = setup().await?;
     let r = withdraw(&s, s.usdc.id(), 1_000, None).await?;
-    assert!(fails_with(&r, "locked"), "a withdrawal before unlock must fail with locked: {:?}", r.failures());
+    assert!(
+        fails_with(&r, "locked"),
+        "a withdrawal before unlock must fail with locked: {:?}",
+        r.failures()
+    );
     assert_eq!(usdc_balance(&s, s.guardian.id()).await?, 0);
     assert_eq!(pending(&s).await?, 0);
     wait_unlock(&s).await?;
@@ -143,7 +244,11 @@ async fn withdraw_caller_and_input_rules() -> anyhow::Result<()> {
     ];
     for (who, token, amount, yocto, msg) in cases {
         let r = call_withdraw(&s, who, token, s.usdc.id(), amount, None, 100, yocto).await?;
-        assert!(fails_with(&r, msg), "expected '{msg}', got {:?}", r.failures());
+        assert!(
+            fails_with(&r, msg),
+            "expected '{msg}', got {:?}",
+            r.failures()
+        );
     }
     assert_eq!(usdc_balance(&s, &s.vault).await?, FAUCET);
     assert_eq!(pending(&s).await?, 0);
@@ -156,15 +261,25 @@ async fn withdraw_receiver_rules() -> anyhow::Result<()> {
     wait_unlock(&s).await?;
     for bad in [&s.vault, s.coll.id(), s.usdc.id()] {
         let r = withdraw(&s, s.usdc.id(), 1_000, Some(bad)).await?;
-        assert!(fails_with(&r, "invalid receiver"), "receiver {bad} must be refused: {:?}", r.failures());
+        assert!(
+            fails_with(&r, "invalid receiver"),
+            "receiver {bad} must be refused: {:?}",
+            r.failures()
+        );
     }
     assert_eq!(usdc_balance(&s, &s.vault).await?, FAUCET);
-    let ok: bool = withdraw(&s, s.usdc.id(), 1_000, Some(s.friend.id())).await?.json()?;
+    let ok: bool = withdraw(&s, s.usdc.id(), 1_000, Some(s.friend.id()))
+        .await?
+        .json()?;
     assert!(ok);
     assert_eq!(usdc_balance(&s, s.friend.id()).await?, 1_000);
     let ok: bool = withdraw(&s, s.usdc.id(), 2_000, None).await?.json()?;
     assert!(ok);
-    assert_eq!(usdc_balance(&s, s.guardian.id()).await?, 2_000, "the receiver defaults to the owner");
+    assert_eq!(
+        usdc_balance(&s, s.guardian.id()).await?,
+        2_000,
+        "the receiver defaults to the owner"
+    );
     assert_eq!(usdc_balance(&s, &s.vault).await?, FAUCET - 3_000);
     Ok(())
 }
@@ -177,7 +292,9 @@ async fn insufficient_gas_leaves_pending_zero() -> anyhow::Result<()> {
     assert!(fails_with(&r, "not enough gas"), "{:?}", r.failures());
     assert_eq!(pending(&s).await?, 0);
     assert_eq!(usdc_balance(&s, &s.vault).await?, FAUCET);
-    let ok: bool = call_withdraw(&s, &s.guardian, "bv-1", s.usdc.id(), 1_000, None, 90, 1).await?.json()?;
+    let ok: bool = call_withdraw(&s, &s.guardian, "bv-1", s.usdc.id(), 1_000, None, 90, 1)
+        .await?
+        .json()?;
     assert!(ok, "90 Tgas must be enough for a whole withdrawal");
     assert_eq!(pending(&s).await?, 0);
     Ok(())
@@ -189,7 +306,11 @@ async fn failed_ft_transfer_does_not_wedge() -> anyhow::Result<()> {
     wait_unlock(&s).await?;
     set_mode(&s, "fail").await?;
     let r = withdraw(&s, s.hostile.id(), 500, None).await?;
-    assert!(r.is_success(), "a refused token transfer must not fail the whole call: {:?}", r.failures());
+    assert!(
+        r.is_success(),
+        "a refused token transfer must not fail the whole call: {:?}",
+        r.failures()
+    );
     let events = withdraw_events(&r);
     assert_eq!(events.len(), 1, "exactly one withdraw event");
     assert_eq!(events[0]["data"]["ok"], false);
@@ -224,11 +345,19 @@ async fn hostile_token_cannot_wedge_pending() -> anyhow::Result<()> {
 async fn second_withdraw_while_pending_is_busy() -> anyhow::Result<()> {
     let s = setup().await?;
     wait_unlock(&s).await?;
-    let call = || Function::new("withdraw")
+    let call = || {
+        Function::new("withdraw")
         .args_json(json!({ "token_id": "bv-1", "ft_contract": s.usdc.id(), "amount": "1000", "receiver_id": null }))
-        .deposit(NearToken::from_yoctonear(1)).gas(Gas::from_tgas(100));
+        .deposit(NearToken::from_yoctonear(1)).gas(Gas::from_tgas(100))
+    };
     // Both calls run in one receipt. The first raises pending, so the second must refuse.
-    let r = s.guardian.batch(s.coll.id()).call(call()).call(call()).transact().await?;
+    let r = s
+        .guardian
+        .batch(s.coll.id())
+        .call(call())
+        .call(call())
+        .transact()
+        .await?;
     assert!(fails_with(&r, BUSY), "{:?}", r.failures());
     assert_eq!(pending(&s).await?, 0, "the failed receipt is rolled back");
     assert_eq!(usdc_balance(&s, &s.vault).await?, FAUCET);
@@ -244,8 +373,11 @@ async fn withdraw_emits_event() -> anyhow::Result<()> {
     let r = withdraw(&s, s.usdc.id(), 1_000, Some(s.friend.id())).await?;
     let events = withdraw_events(&r);
     assert_eq!(events.len(), 1, "exactly one withdraw event");
-    assert_eq!(events[0], json!({ "standard": "birthday_vault", "version": "1.0.0", "event": "withdraw",
-        "data": { "token_id": "bv-1", "ft_contract": s.usdc.id(), "receiver_id": s.friend.id(), "amount": "1000", "ok": true } }));
+    assert_eq!(
+        events[0],
+        json!({ "standard": "birthday_vault", "version": "1.0.0", "event": "withdraw",
+        "data": { "token_id": "bv-1", "ft_contract": s.usdc.id(), "receiver_id": s.friend.id(), "amount": "1000", "ok": true } })
+    );
     Ok(())
 }
 
@@ -255,30 +387,52 @@ async fn on_withdraw_is_private() -> anyhow::Result<()> {
     let r = s.guardian.call(s.coll.id(), "on_withdraw")
         .args_json(json!({ "token_id": "bv-1", "ft_contract": s.usdc.id(), "receiver_id": s.guardian.id(), "amount": "1" }))
         .transact().await?;
-    assert!(fails_with(&r, "Method on_withdraw is private"), "{:?}", r.failures());
+    assert!(
+        fails_with(&r, "Method on_withdraw is private"),
+        "{:?}",
+        r.failures()
+    );
     Ok(())
 }
 
 #[tokio::test]
 async fn withdraw_near_rules() -> anyhow::Result<()> {
     let s = setup().await?;
-    assert!(s.guardian.transfer_near(&s.vault, NearToken::from_near(1)).await?.is_success());
+    assert!(s
+        .guardian
+        .transfer_near(&s.vault, NearToken::from_near(1))
+        .await?
+        .is_success());
     let half = NearToken::from_millinear(500).as_yoctonear();
     let r = withdraw_near(&s, half, Some(s.friend.id())).await?;
     assert!(fails_with(&r, "locked"), "{:?}", r.failures());
     wait_unlock(&s).await?;
     for bad in [&s.vault, s.coll.id()] {
         let r = withdraw_near(&s, half, Some(bad)).await?;
-        assert!(fails_with(&r, "invalid receiver"), "receiver {bad} must be refused: {:?}", r.failures());
+        assert!(
+            fails_with(&r, "invalid receiver"),
+            "receiver {bad} must be refused: {:?}",
+            r.failures()
+        );
     }
-    let before = s.worker.view_account(s.friend.id()).await?.balance.as_yoctonear();
+    let before = s
+        .worker
+        .view_account(s.friend.id())
+        .await?
+        .balance
+        .as_yoctonear();
     let r = withdraw_near(&s, half, Some(s.friend.id())).await?;
     let events = withdraw_events(&r);
     assert_eq!(events.len(), 1, "exactly one withdraw event");
     assert_eq!(events[0]["data"]["ft_contract"], Value::Null);
     let ok: bool = r.json()?;
     assert!(ok);
-    let after = s.worker.view_account(s.friend.id()).await?.balance.as_yoctonear();
+    let after = s
+        .worker
+        .view_account(s.friend.id())
+        .await?
+        .balance
+        .as_yoctonear();
     assert_eq!(after - before, half, "the receiver gets exactly the amount");
     assert_eq!(pending(&s).await?, 0);
     Ok(())
@@ -287,7 +441,11 @@ async fn withdraw_near_rules() -> anyhow::Result<()> {
 #[tokio::test]
 async fn withdraw_near_caller_and_input_rules() -> anyhow::Result<()> {
     let s = setup().await?;
-    assert!(s.guardian.transfer_near(&s.vault, NearToken::from_near(1)).await?.is_success());
+    assert!(s
+        .guardian
+        .transfer_near(&s.vault, NearToken::from_near(1))
+        .await?
+        .is_success());
     wait_unlock(&s).await?;
     let half = NearToken::from_millinear(500).as_yoctonear();
     let cases: [(&Account, &str, u128, u64, u128, &str); 6] = [
@@ -299,16 +457,37 @@ async fn withdraw_near_caller_and_input_rules() -> anyhow::Result<()> {
         (&s.guardian, "bv-1", 0, 100, 1, "amount must be positive"),
     ];
     for (who, token, amount, tgas, yocto, msg) in cases {
-        let r = who.call(s.coll.id(), "withdraw_near")
-            .args_json(json!({ "token_id": token, "amount": amount.to_string(), "receiver_id": null }))
-            .deposit(NearToken::from_yoctonear(yocto)).gas(Gas::from_tgas(tgas)).transact().await?;
-        assert!(fails_with(&r, msg), "expected '{msg}', got {:?}", r.failures());
+        let r = who
+            .call(s.coll.id(), "withdraw_near")
+            .args_json(
+                json!({ "token_id": token, "amount": amount.to_string(), "receiver_id": null }),
+            )
+            .deposit(NearToken::from_yoctonear(yocto))
+            .gas(Gas::from_tgas(tgas))
+            .transact()
+            .await?;
+        assert!(
+            fails_with(&r, msg),
+            "expected '{msg}', got {:?}",
+            r.failures()
+        );
     }
-    let call = || Function::new("withdraw_near")
-        .args_json(json!({ "token_id": "bv-1", "amount": half.to_string(), "receiver_id": null }))
-        .deposit(NearToken::from_yoctonear(1)).gas(Gas::from_tgas(100));
+    let call = || {
+        Function::new("withdraw_near")
+            .args_json(
+                json!({ "token_id": "bv-1", "amount": half.to_string(), "receiver_id": null }),
+            )
+            .deposit(NearToken::from_yoctonear(1))
+            .gas(Gas::from_tgas(100))
+    };
     // Both calls run in one receipt. The first raises pending, so the second must refuse.
-    let r = s.guardian.batch(s.coll.id()).call(call()).call(call()).transact().await?;
+    let r = s
+        .guardian
+        .batch(s.coll.id())
+        .call(call())
+        .call(call())
+        .transact()
+        .await?;
     assert!(fails_with(&r, BUSY), "{:?}", r.failures());
     assert_eq!(pending(&s).await?, 0);
     Ok(())
@@ -317,14 +496,33 @@ async fn withdraw_near_caller_and_input_rules() -> anyhow::Result<()> {
 #[tokio::test]
 async fn unexpected_assets() -> anyhow::Result<()> {
     let s = setup().await?;
-    assert!(s.root.call(s.usdc.id(), "faucet").args_json(json!({ "account_id": s.friend.id() })).transact().await?.is_success());
-    let r = s.friend.call(s.usdc.id(), "ft_transfer_call")
+    assert!(s
+        .root
+        .call(s.usdc.id(), "faucet")
+        .args_json(json!({ "account_id": s.friend.id() }))
+        .transact()
+        .await?
+        .is_success());
+    let r = s
+        .friend
+        .call(s.usdc.id(), "ft_transfer_call")
         .args_json(json!({ "receiver_id": s.vault, "amount": "2000", "msg": "" }))
-        .deposit(NearToken::from_yoctonear(1)).gas(Gas::from_tgas(100)).transact().await?;
+        .deposit(NearToken::from_yoctonear(1))
+        .gas(Gas::from_tgas(100))
+        .transact()
+        .await?;
     assert!(r.is_success(), "{:?}", r.failures());
-    assert_eq!(usdc_balance(&s, &s.vault).await?, FAUCET + 2_000, "the vault keeps tokens sent with ft_transfer_call");
+    assert_eq!(
+        usdc_balance(&s, &s.vault).await?,
+        FAUCET + 2_000,
+        "the vault keeps tokens sent with ft_transfer_call"
+    );
     assert_eq!(usdc_balance(&s, s.friend.id()).await?, FAUCET - 2_000);
-    assert!(s.friend.transfer_near(&s.vault, NearToken::from_near(1)).await?.is_success());
+    assert!(s
+        .friend
+        .transfer_near(&s.vault, NearToken::from_near(1))
+        .await?
+        .is_success());
     let r = withdraw(&s, s.usdc.id(), 2_000, None).await?;
     assert!(fails_with(&r, "locked"), "{:?}", r.failures());
     let r = withdraw_near(&s, NearToken::from_near(1).as_yoctonear(), None).await?;
@@ -336,11 +534,23 @@ async fn unexpected_assets() -> anyhow::Result<()> {
 async fn hostile_token_cannot_use_vault() -> anyhow::Result<()> {
     let s = setup().await?;
     wait_unlock(&s).await?;
-    let r = s.usdc.as_account().call(&s.vault, "ft_send")
-        .args_json(json!({ "token": s.usdc.id(), "receiver": s.usdc.id(), "amount": "1000" })).max_gas().transact().await?;
+    let r = s
+        .usdc
+        .as_account()
+        .call(&s.vault, "ft_send")
+        .args_json(json!({ "token": s.usdc.id(), "receiver": s.usdc.id(), "amount": "1000" }))
+        .max_gas()
+        .transact()
+        .await?;
     assert!(r.is_failure(), "the token itself must not move vault funds");
-    let r = s.hostile.as_account().call(&s.vault, "near_send")
-        .args_json(json!({ "receiver": s.hostile.id(), "amount": "1000" })).max_gas().transact().await?;
+    let r = s
+        .hostile
+        .as_account()
+        .call(&s.vault, "near_send")
+        .args_json(json!({ "receiver": s.hostile.id(), "amount": "1000" }))
+        .max_gas()
+        .transact()
+        .await?;
     assert!(r.is_failure(), "a hostile token must not move vault NEAR");
     assert_eq!(usdc_balance(&s, &s.vault).await?, FAUCET);
     Ok(())
