@@ -9,9 +9,9 @@ A testnet-only contract that gives each visitor three fresh play accounts, so th
 **Constants**
 
 ```rust
-const GUARDIAN_NEAR: NearToken = NearToken::from_millinear(100);
-const CHILD_NEAR: NearToken = NearToken::from_millinear(20);
-const BUYER_NEAR: NearToken = NearToken::from_millinear(30);
+const GUARDIAN_NEAR: NearToken = NearToken::from_millinear(150);
+const CHILD_NEAR: NearToken = NearToken::from_millinear(120);
+const BUYER_NEAR: NearToken = NearToken::from_millinear(120);
 const USDC_CALL_GAS: Gas = Gas::from_tgas(10);
 ```
 
@@ -67,6 +67,6 @@ Promise::new(self.usdc.clone())
     .detach();
 ```
 
-A transfer to a 64-character hex id creates that account, and the account's only key is the key the id came from. Return `{"guardian": guardian, "child": child, "buyer": buyer}`.
+Each account must hold about 0.001 NEAR per Tgas it attaches, because NEAR charges the prepaid gas up front at a worst-case price and refunds the rest. A mint attaches 100 Tgas plus a 0.025 NEAR deposit, and a withdrawal 90 to 100 Tgas, so the guardian gets 0.15 NEAR and the child and buyer 0.12 NEAR each. Testnet showed this on 10 Nov: a 0.1 NEAR guardian could not mint. A transfer to a 64-character hex id creates that account, and the account's only key is the key the id came from. Return `{"guardian": guardian, "child": child, "buyer": buyer}`.
 
 The hub is deployed only to testnet. Its balance is the hard ceiling on what visitors can take.

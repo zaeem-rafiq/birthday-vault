@@ -142,7 +142,7 @@ async fn start_demo_creates_three_funded_accounts() -> anyhow::Result<()> {
         out,
         json!({ "guardian": implicit(&keys.0), "child": implicit(&keys.1), "buyer": implicit(&keys.2) })
     );
-    for (pk, millinear) in [(&keys.0, 100), (&keys.1, 20), (&keys.2, 30)] {
+    for (pk, millinear) in [(&keys.0, 150), (&keys.1, 120), (&keys.2, 120)] {
         let id: AccountId = implicit(pk).parse()?;
         assert_eq!(
             s.worker.view_account(&id).await?.balance,

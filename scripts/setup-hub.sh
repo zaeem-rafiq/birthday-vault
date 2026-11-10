@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploys the testnet demo hub and its play USDC. Plan section 9, Phase 2. Testnet only.
-#   scripts/setup-hub.sh <funder.testnet> [--dry-run]
+#   scripts/setup-hub.sh <funder.testnet> [--dry-run | --redeploy-code]
 # Creates tusdc.<funder> and hub.<funder>, adds a pool of function-call keys that may call only
 # start_demo on the hub, and writes the hub settings and the pool to .env.render.local, which
 # git ignores. The pool keys are public by design: the testnet page ships them, and they can
@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
 source scripts/env.sh
 
-FUNDER=${1:?usage: setup-hub.sh <funder.testnet> [--dry-run]}
+FUNDER=${1:?usage: setup-hub.sh <funder.testnet> [--dry-run | --redeploy-code]}
 DRY=${2:-}
 case "$FUNDER" in *.testnet) ;; *) echo "Refused: the demo hub is testnet only." >&2; exit 1 ;; esac
 NET=testnet
@@ -30,9 +30,15 @@ HB=$(wc -c < "$HW" | tr -d ' ')
 TF=$(python3 -I -c "print(f'{$TB * 0.00001 + 0.3:.5f}')")
 HF=$(python3 -I -c "print(f'{$HB * 0.00001 + 0.3 + $DEMO_FUNDS:.5f}')")
 echo "tUSDC $TUSDC: $TB bytes, funded with $TF NEAR"
-echo "Hub $HUB: $HB bytes, funded with $HF NEAR, of which $DEMO_FUNDS NEAR pays for about 10 demos"
+echo "Hub $HUB: $HB bytes, funded with $HF NEAR, of which $DEMO_FUNDS NEAR pays for about $(python3 -I -c "print(int($DEMO_FUNDS / 0.39))") demos at 0.39 NEAR each"
 echo "Key pool: $POOL keys, each limited to start_demo with a 1 NEAR gas allowance"
 if [ "$DRY" = "--dry-run" ]; then echo "Dry run: nothing signed."; exit 0; fi
+if [ "$DRY" = "--redeploy-code" ]; then
+  # Replace the hub's code and keep its state, for a constant change. tUSDC is untouched.
+  send contract deploy "$HUB" use-file "$HW" without-init-call
+  echo "HUB REDEPLOY PASS: new code on $HUB, state kept."
+  exit 0
+fi
 
 send account create-account fund-myself "$TUSDC" "$TF NEAR" autogenerate-new-keypair save-to-keychain sign-as "$FUNDER"
 send contract deploy "$TUSDC" use-file "$TW" with-init-call new json-args "{\"hub_id\":\"$HUB\"}" \

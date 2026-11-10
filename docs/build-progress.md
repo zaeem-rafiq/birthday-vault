@@ -41,3 +41,12 @@ Before Gemma starts a step, Claude proves its checks against a hidden reference 
 - T26 `mint_before_distribution_refunds` has no test of its own. The sandbox cannot hold back global code distribution, so the timing cannot be forced. Its refund path is the failed-creation path, which `mint_fails_cleanly_if_account_exists` covers.
 - T27 is covered by `hub_limits_hold`, `hub_auth` and `hub_keys_are_reusable_within_limits`. T28 is `hub_rejects_bad_keys`.
 - `./check` covers the secret scan, format, clippy, wasm builds, unit tests and sandbox tests. Phase 3 adds `scripts/check-features`, `FEATURES.md` and the web checks, because every feature row needs a web end-to-end test first.
+
+## Phase 2, 10 Nov early morning
+
+- Testnet: `tusdc.birthday-vault-zr1109.testnet`, `hub.birthday-vault-zr1109.testnet` (8 pool keys, limits 20 per hour and 100 per day) and collection `g1.birthday-vault-zr1109.testnet`. Pool keys are in the gitignored `.env.render.local`.
+- `scripts/deploy.sh testnet ... g1` printed DEPLOY CHECK PASS: standard nft_mint event, vault_info found, no keys on `bv-1`.
+- `scripts/play-flow.sh testnet g1...` printed PLAY FLOW PASS on `bv-2`: demo start, mint, play gift, early withdrawal refused with `locked`, guardian withdrawal, child claim, child withdrawal, vault empty, no keys on `bv-2`.
+- Found on testnet: a 0.1 NEAR guardian could not mint, because an account must hold about 0.001 NEAR per Tgas it attaches. Demo funding is now 0.15, 0.12 and 0.12 NEAR (PLAN Decisions). Each demo costs the hub 0.39 NEAR, so the hub's 1.5 NEAR covers about 3 demos; it needs testnet NEAR before judging.
+- The collection keeps its access key until the final public deployment, as the plan allows for testnet; `scripts/lock.sh` is still to write.
+- The owner allowed Claude to run `scripts/setup-hub.sh`, `scripts/deploy.sh testnet` and `scripts/play-flow.sh testnet` (`.claude/settings.local.json`, 10 Nov).

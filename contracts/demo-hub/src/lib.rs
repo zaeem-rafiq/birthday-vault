@@ -5,9 +5,9 @@ use near_sdk::{
     Promise, PublicKey,
 };
 
-const GUARDIAN_NEAR: NearToken = NearToken::from_millinear(100);
-const CHILD_NEAR: NearToken = NearToken::from_millinear(20);
-const BUYER_NEAR: NearToken = NearToken::from_millinear(30);
+const GUARDIAN_NEAR: NearToken = NearToken::from_millinear(150);
+const CHILD_NEAR: NearToken = NearToken::from_millinear(120);
+const BUYER_NEAR: NearToken = NearToken::from_millinear(120);
 const USDC_CALL_GAS: Gas = Gas::from_tgas(10);
 
 #[near]
