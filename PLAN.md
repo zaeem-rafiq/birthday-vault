@@ -762,6 +762,7 @@ Have a fresh delegated helper clone the public repository into a temporary folde
 | 9 Nov | No wallet-connect login | Not needed for the demo or the proof |
 | 9 Nov | Mainnet proof lock defaults to 30 days | The owner can recover the gift |
 | 9 Nov | The vault uses near-sys with no std, built with plain cargo | near-sdk made it 117,944 bytes against a 30 KB limit, and cargo-near refuses a crate without near-sdk at Rust 1.95.0 |
+| 9 Nov | T3b checks the source and the empty key list, not wasm imports | near-sdk `Promise` links add-key, deploy and stake imports in every contract that uses it, so an import check cannot pass for the collection |
 | 9 Nov | Repository starts private | Gitleaks and owner approval come before publication |
 | 9 Nov | Mainnet collection key is deleted only after a real withdrawal | A key still allows a fix if the first real withdrawal fails |
 
