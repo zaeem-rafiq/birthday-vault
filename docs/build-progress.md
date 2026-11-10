@@ -15,8 +15,8 @@ Phase 0 is done. Owner still owes: a named .near account from Meteor Wallet by t
 | S5 | set_vault_code and mint flow (T3b, T8, T15, T22, T24, T26, T29) | Gemma, then Claude | Gemma passed 9 of 11 in its hour, 181 tool calls. Claude fixed the byte price and the #[near] views, and fixed one broken check. Breaks: 14 of 20 caught at first; 6 new checks added, now 20 of 20. 13 checks. |
 | S6 | Withdrawals (T1, T11 second withdrawal, T12-T14, T16, T17, T20) | Gemma | Passed 9 Nov in 26.5 minutes, 16 tool calls, no help. Review added a 13th check for withdraw_near's caller rules. Breaks: 18 of 18 on the reference, 14 of 14 on Gemma's code. |
 | S7 | Transfer guard, child claim, standard mint event (T4-T7, T10, T11 transfer and claim, T18, T19, T25) | Gemma | Passed 9 Nov in 36 minutes, 13 tool calls, no help. Breaks: 16 of 16 on the reference, 15 of 15 on Gemma's code (1 skipped, pattern not unique). The mint event is now the standard nft_mint. |
-| S8 | Demo hub (T27, T28) | Gemma | Running since 9 Nov, 7 checks. Hidden reference passes all 7, and 16 of 16 breaks are caught. Windows and limits are init arguments (PLAN Decisions). |
-| S9 | Measure gas and storage, update constants, ./check, FEATURES.md, CI | Claude | |
+| S8 | Demo hub (T27, T28) | Gemma | Passed 10 Nov in about 11 minutes, no help. 7 checks; 16 of 16 breaks caught on the reference, whose logic Gemma's matches; breaks not rerun on Gemma's code. |
+| S9 | Measure gas and storage, update constants, ./check, FEATURES.md, CI | Claude | Done 10 Nov except FEATURES.md and the feature checker, which wait for web end-to-end tests in Phase 3. ./check passes: 82 sandbox tests. Constants unchanged: MINT_COST has room (T24). |
 
 ## Open plan change: T3b
 
