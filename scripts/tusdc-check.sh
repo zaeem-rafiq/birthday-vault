@@ -66,10 +66,10 @@ fi
 
 # 4. Every visible check passes.
 if cargo test --locked -p tests --test tusdc_spec -- --test-threads=3 >"$LOG" 2>&1 \
-  && grep -q 'test result: ok. 8 passed' "$LOG"; then
-  pass "all 8 checks in tests/tests/tusdc_spec.rs passed"
+  && grep -q 'test result: ok. 9 passed' "$LOG"; then
+  pass "all 9 checks in tests/tests/tusdc_spec.rs passed"
 else
-  fail "all 8 checks in tests/tests/tusdc_spec.rs passed" "details:"
+  fail "all 9 checks in tests/tests/tusdc_spec.rs passed" "details:"
   grep -E '^test .* (ok|FAILED)$|panicked|^error' "$LOG" | head -30
   tail -12 "$LOG"
 fi

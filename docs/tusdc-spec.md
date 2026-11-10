@@ -1,6 +1,6 @@
 # tUSDC contract: exact specification
 
-Write only `contracts/tusdc/src/lib.rs`. `tests/tests/tusdc_spec.rs` holds the 8 checks it must pass. Start from `docs/sources/near-sdk-examples/fungible-token-lib.rs`, and keep its `FungibleTokenCore`, `FungibleTokenResolver`, `StorageManagement` and metadata provider blocks unchanged. The token library is in `docs/sources/near-contract-standards-5.30.1/`.
+Write only `contracts/tusdc/src/lib.rs`. `tests/tests/tusdc_spec.rs` holds the 9 checks it must pass. Start from `docs/sources/near-sdk-examples/fungible-token-lib.rs`, and keep its `FungibleTokenCore`, `FungibleTokenResolver`, `StorageManagement` and metadata provider blocks unchanged. The token library is in `docs/sources/near-contract-standards-5.30.1/`.
 
 **State:** `struct Contract { token: FungibleToken, metadata: LazyOption<FungibleTokenMetadata>, hub: AccountId }`. Keep `#[derive(PanicOnDefault)]` and `#[near(contract_state)]`.
 
@@ -19,3 +19,5 @@ Write only `contracts/tusdc/src/lib.rs`. `tests/tests/tusdc_spec.rs` holds the 8
 **Hub only** means `require!(env::predecessor_account_id() == self.hub, "only the hub");`.
 
 Neither method takes a deposit. The contract's own balance pays for storage.
+
+`storage_unregister` must always panic, because the hub pays for storage and a holder could otherwise withdraw it.

@@ -1,4 +1,4 @@
-//! The 8 checks for contracts/tusdc.
+//! The 9 checks for contracts/tusdc.
 use near_workspaces::network::Sandbox;
 use near_workspaces::types::NearToken;
 use near_workspaces::{Account, Contract, Worker};
@@ -121,5 +121,16 @@ async fn holders_can_transfer() -> anyhow::Result<()> {
     assert!(r.is_success(), "ft_transfer failed: {:?}", r.failures());
     assert_eq!(balance(&s, &s.bob).await?, "1000");
     assert_eq!(balance(&s, &s.alice).await?, "4999000");
+    Ok(())
+}
+
+#[tokio::test]
+async fn storage_unregister_cannot_drain_the_contract() -> anyhow::Result<()> {
+    let s = setup().await?;
+    assert!(faucet(&s, &s.hub, &s.alice).await?);
+    let r = s.alice.call(s.token.id(), "storage_unregister").args_json(json!({ "force": true }))
+        .deposit(NearToken::from_yoctonear(1)).transact().await?;
+    assert!(r.is_failure(), "unregistering must be disabled, or holders could drain the contract");
+    assert_eq!(balance(&s, &s.alice).await?, "5000000");
     Ok(())
 }

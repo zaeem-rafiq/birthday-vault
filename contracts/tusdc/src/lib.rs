@@ -151,12 +151,8 @@ impl StorageManagement for Contract {
 
     #[payable]
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
-        if let Some((account_id, balance)) = self.token.internal_storage_unregister(force) {
-            near_sdk::log!("Closed @{} with {}", account_id, balance);
-            true
-        } else {
-            false
-        }
+        let _ = force;
+        env::panic_str("unregister is disabled: the hub pays for storage")
     }
 
     fn storage_balance_bounds(&self) -> StorageBalanceBounds {
