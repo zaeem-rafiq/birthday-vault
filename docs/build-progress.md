@@ -11,8 +11,8 @@ Phase 0 is done. Owner still owes: a named .near account from Meteor Wallet by t
 | S1 | Vault under 30 KB with no std | Gemma | Passed 9 Nov (3,341 bytes, 27 minutes); independent review: ship, 1 fix applied |
 | S2 | tUSDC from the near-sdk example | Gemma | Passed 9 Nov (8 minutes); reviewed, storage drain fixed |
 | S3 | Hostile token | Gemma | Passed 9 Nov (40 minutes, 79 tool calls); no independent review, because it is a test double that is never deployed |
-| S4 | Collection state, init, mode rule (T9, T23) | Gemma | Next |
-| S5 | set_vault_code and mint flow (T3b, T8, T15, T22, T24, T26, T29) | Gemma | |
+| S4 | Collection state, init, mode rule (T9, T23) | Gemma | Passed 9 Nov (19 minutes). Mutants: 3 of 4 caught; the low-balance refusal is untested, add it in S5. Review with the whole collection after S7. |
+| S5 | set_vault_code and mint flow (T3b, T8, T15, T22, T24, T26, T29) | Gemma | Next |
 | S6 | Withdrawals (T1, T10-T14, T16, T17, T20, T21) | Gemma | |
 | S7 | Transfer guard and child claim (T4-T7, T18, T19, T25) | Gemma | |
 | S8 | Demo hub (T27, T28) | Gemma | |
