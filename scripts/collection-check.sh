@@ -21,7 +21,7 @@ if git diff --quiet "$BASE" -- scripts AGENTS.md PLAN.md docs rust-toolchain.tom
   && [ -z "$(git status --porcelain -- scripts AGENTS.md PLAN.md docs rust-toolchain.toml tests Cargo.toml Cargo.lock contracts/collection/Cargo.toml contracts/test-token contracts/vault contracts/tusdc contracts/hostile-token)" ]; then
   pass "protected files unchanged"
 else
-  fail "protected files unchanged" "only contracts/vault/src/lib.rs may change. Restore the other files with git checkout."
+  fail "protected files unchanged" "only this step's file may change. Restore the other files with git checkout."
 fi
 
 # 2. No tool-call text leaked into file names or contents.
