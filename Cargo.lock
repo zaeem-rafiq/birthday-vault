@@ -312,7 +312,7 @@ dependencies = [
 name = "collection"
 version = "0.1.0"
 dependencies = [
- "borsh",
+ "near-contract-standards",
  "near-sdk",
 ]
 
@@ -3327,6 +3327,7 @@ dependencies = [
  "anyhow",
  "near-workspaces",
  "serde_json",
+ "sha2 0.10.9",
  "tokio",
 ]
 
