@@ -2,10 +2,10 @@ use near_contract_standards::non_fungible_token::{NonFungibleToken, Token, Token
 use near_contract_standards::non_fungible_token::core::NonFungibleTokenCore;
 use near_contract_standards::non_fungible_token::metadata::{NFTContractMetadata, NonFungibleTokenMetadataProvider, NFT_METADATA_SPEC, TokenMetadata};
 use near_contract_standards::non_fungible_token::enumeration::NonFungibleTokenEnumeration;
-use near_contract_standards::non_fungible_token::events::NftMint;
+use near_contract_standards::non_fungible_token::events::{NftMint, NftTransfer};
 use near_sdk::collections::{LazyOption, LookupMap};
 use near_sdk::json_types::{U64, U128};
-use near_sdk::{env, near, AccountId, BorshStorageKey, CryptoHash, NearToken, PanicOnDefault, Promise, Gas, PromiseError, require};
+use near_sdk::{env, near, AccountId, BorshStorageKey, CryptoHash, NearToken, PanicOnDefault, Promise, Gas, PromiseError, require, PromiseOrValue};
 use near_sdk::serde;
 
 const ICON: &str = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Crect width='8' height='8' fill='%23c58b3a'/%3E%3C/svg%3E";
@@ -18,12 +18,6 @@ const SEND_GAS: Gas = Gas::from_tgas(40);
 const CALLBACK_GAS: Gas = Gas::from_tgas(30);
 const MIN_WITHDRAW_GAS: Gas = Gas::from_tgas(90);
 const VAULT_MEDIA: &str = "https://birthday-vault.onrender.com/vault.svg";
-
-#[near(event_json(standard = "nep171"))]
-pub enum CollectionEvents {
-    #[event_version("1.0.0")]
-    Mint { owner_id: AccountId, token_ids: Vec<TokenId>, memo: Option<String> },
-}
 
 #[near(serializers = [borsh, json])]
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -249,10 +243,9 @@ impl Collection {
                 reference_hash: None,
             };
             self.nft.internal_mint_with_refund(token_id.clone(), guardian.clone(), Some(metadata), None);
-            env::log_str(&format!("Minted token {}", token_id));
-            CollectionEvents::Mint {
-                owner_id: guardian.clone(),
-                token_ids: vec![token_id.clone()],
+            NftMint {
+                owner_id: &guardian,
+                token_ids: &[token_id.as_str()],
                 memo: None,
             }.emit();
             self.vaults.insert(&token_id, &VaultState {
@@ -388,8 +381,37 @@ impl Collection {
         ok
     }
 
-    pub fn nft_token(&self, token_id: TokenId) -> Option<Token> {
-        self.nft.nft_token(token_id)
+    fn guard(&self, token_id: &TokenId, receiver: &AccountId) {
+        let v = self.vaults.get(token_id).unwrap_or_else(|| env::panic_str("no such vault"));
+        require!(v.pending == 0, "busy: a withdrawal is still settling");
+        let me = env::current_account_id();
+        require!(*receiver != me && !receiver.as_str().ends_with(&format!(".{me}")), "invalid receiver");
+        let owner = self.nft.owner_by_id.get(token_id).unwrap();
+        if env::block_timestamp() < v.unlock_ns {
+            require!(env::predecessor_account_id() == owner, "only the owner");
+            require!(*receiver == v.guardian || *receiver == v.child, "locked: only guardian and child");
+        }
+    }
+
+    #[payable]
+    pub fn claim_as_child(&mut self, token_id: TokenId) {
+        near_sdk::assert_one_yocto();
+        let v = self.vaults.get(&token_id).unwrap_or_else(|| env::panic_str("no such vault"));
+        require!(env::predecessor_account_id() == v.child, "only the child");
+        require!(env::block_timestamp() >= v.unlock_ns, "locked");
+        let owner = self.nft.owner_by_id.get(&token_id).unwrap();
+        require!(owner == v.guardian, "the guardian no longer holds it");
+        require!(v.pending == 0, "busy: a withdrawal is still settling");
+
+        self.nft.internal_transfer_unguarded(&token_id, &owner, &v.child);
+        NftTransfer {
+            old_owner_id: &owner,
+            new_owner_id: &v.child,
+            token_ids: &[token_id.as_str()],
+            authorized_id: None,
+            memo: Some("child_claim"),
+        }
+        .emit();
     }
 }
 
@@ -416,5 +438,24 @@ impl NonFungibleTokenEnumeration for Collection {
 impl NonFungibleTokenMetadataProvider for Collection {
     fn nft_metadata(&self) -> NFTContractMetadata {
         self.default_metadata()
+    }
+}
+
+#[near]
+impl NonFungibleTokenCore for Collection {
+    #[payable]
+    fn nft_transfer(&mut self, receiver_id: AccountId, token_id: TokenId, approval_id: Option<u64>, memo: Option<String>) {
+        self.guard(&token_id, &receiver_id);
+        self.nft.nft_transfer(receiver_id, token_id, approval_id, memo);
+    }
+
+    #[payable]
+    #[allow(unused_variables)]
+    fn nft_transfer_call(&mut self, receiver_id: AccountId, token_id: TokenId, approval_id: Option<u64>, memo: Option<String>, msg: String) -> PromiseOrValue<bool> {
+        env::panic_str("disabled: use nft_transfer")
+    }
+
+    fn nft_token(&self, token_id: TokenId) -> Option<Token> {
+        self.nft.nft_token(token_id)
     }
 }
