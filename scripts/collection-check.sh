@@ -7,7 +7,7 @@ cd "$ROOT" || exit 99
 # shellcheck disable=SC1091
 source "$ROOT/scripts/env.sh"
 
-BASE="build/s4-base"
+BASE="build/s5-base"
 WASM="target/near/collection/collection.wasm"
 TEST_NAME="vault_rejects_every_caller_but_parent"
 LOG="$(mktemp -t collection-check)"
@@ -58,6 +58,7 @@ fi
 # 3. The contract builds with the plan's command and is small enough to deploy.
 rm -f "$WASM"
 cargo build --locked -p vault --target wasm32-unknown-unknown --release >/dev/null 2>&1 && mkdir -p target/near/vault && cp target/wasm32-unknown-unknown/release/vault.wasm target/near/vault/vault.wasm
+for c in tusdc hostile-token; do cargo near build non-reproducible-wasm --locked --no-abi --manifest-path contracts/$c/Cargo.toml >/dev/null 2>&1; done
 if cargo near build non-reproducible-wasm --locked --no-abi --manifest-path contracts/collection/Cargo.toml >"$LOG" 2>&1 && [ -s "$WASM" ]; then
   pass "collection builds to $WASM"
 else
@@ -65,15 +66,18 @@ else
   tail -25 "$LOG"
 fi
 
-# 4. Every visible check passes.
-if cargo test --locked -p tests --test collection_init_spec -- --test-threads=3 >"$LOG" 2>&1 \
-  && grep -q 'test result: ok. 9 passed' "$LOG"; then
-  pass "all 9 checks in tests/tests/collection_init_spec.rs passed"
-else
-  fail "all 9 checks in tests/tests/collection_init_spec.rs passed" "details:"
-  grep -E '^test .* (ok|FAILED)$|panicked|^error' "$LOG" | head -30
-  tail -12 "$LOG"
-fi
+# 4. Every visible check passes: step S4's 9 and step S5's 11.
+for spec in collection_init_spec:9 collection_mint_spec:11; do
+  name=${spec%%:*}; want=${spec##*:}
+  if cargo test --locked -p tests --test "$name" -- --test-threads=3 >"$LOG" 2>&1 \
+    && grep -q "test result: ok. $want passed" "$LOG"; then
+    pass "all $want checks in tests/tests/$name.rs passed"
+  else
+    fail "all $want checks in tests/tests/$name.rs passed" "details:"
+    grep -E '^test .* (ok|FAILED)$|panicked|^error' "$LOG" | head -30
+    tail -12 "$LOG"
+  fi
+done
 
 rm -f "$LOG"
 if [ "$fails" -eq 0 ]; then
