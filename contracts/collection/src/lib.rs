@@ -14,6 +14,9 @@ const VAULT_FUNDING: u128 = 2_500_000_000_000_000_000_000;
 const MINT_COST: u128 = 25_000_000_000_000_000_000_000;
 const REG_GAS: Gas = Gas::from_tgas(10);
 const MINT_CALLBACK_GAS: Gas = Gas::from_tgas(30);
+const SEND_GAS: Gas = Gas::from_tgas(40);
+const CALLBACK_GAS: Gas = Gas::from_tgas(30);
+const MIN_WITHDRAW_GAS: Gas = Gas::from_tgas(90);
 const VAULT_MEDIA: &str = "https://birthday-vault.onrender.com/vault.svg";
 
 #[near(event_json(standard = "nep171"))]
@@ -304,6 +307,85 @@ impl Collection {
         }
         let token_id = vault_id.to_string().split('.').next().unwrap_or_default().to_string();
         self.vault_info(token_id).unwrap_or(near_sdk::serde_json::Value::Null)
+    }
+
+    #[payable]
+    pub fn withdraw(&mut self, token_id: TokenId, ft_contract: AccountId, amount: U128, receiver_id: Option<AccountId>) -> Promise {
+        near_sdk::assert_one_yocto();
+        require!(env::prepaid_gas() >= MIN_WITHDRAW_GAS, "not enough gas");
+        require!(self.vaults.contains_key(&token_id), "no such vault");
+        let mut v = self.vaults.get(&token_id).unwrap();
+        require!(env::block_timestamp() >= v.unlock_ns, "locked");
+        let owner = self.nft.owner_by_id.get(&token_id).expect("owner not found");
+        require!(env::predecessor_account_id() == owner, "only the owner");
+        require!(v.pending == 0, "busy: a withdrawal is still settling");
+        require!(amount.0 > 0, "amount must be positive");
+        let receiver = receiver_id.unwrap_or(owner.clone());
+        let vault_id = format!("{}.{}", token_id, env::current_account_id());
+        require!(receiver != vault_id.parse::<AccountId>().unwrap() && receiver != env::current_account_id() && receiver != ft_contract, "invalid receiver");
+        v.pending += 1;
+        self.vaults.insert(&token_id, &v);
+        Promise::new(vault_id.parse::<AccountId>().unwrap()).function_call(
+            "ft_send".to_string(),
+            near_sdk::serde_json::to_vec(&near_sdk::serde_json::json!({"token": ft_contract, "receiver": receiver.clone(), "amount": amount.0.to_string()})).unwrap(),
+            NearToken::from_yoctonear(0),
+            SEND_GAS,
+        ).then(
+            Self::ext(env::current_account_id())
+                .with_static_gas(CALLBACK_GAS)
+                .on_withdraw(token_id, Some(ft_contract), receiver, amount),
+        )
+    }
+
+    #[payable]
+    pub fn withdraw_near(&mut self, token_id: TokenId, amount: U128, receiver_id: Option<AccountId>) -> Promise {
+        near_sdk::assert_one_yocto();
+        require!(env::prepaid_gas() >= MIN_WITHDRAW_GAS, "not enough gas");
+        require!(self.vaults.contains_key(&token_id), "no such vault");
+        let mut v = self.vaults.get(&token_id).unwrap();
+        require!(env::block_timestamp() >= v.unlock_ns, "locked");
+        let owner = self.nft.owner_by_id.get(&token_id).expect("owner not found");
+        require!(env::predecessor_account_id() == owner, "only the owner");
+        require!(v.pending == 0, "busy: a withdrawal is still settling");
+        require!(amount.0 > 0, "amount must be positive");
+        let receiver = receiver_id.unwrap_or(owner.clone());
+        let vault_id = format!("{}.{}", token_id, env::current_account_id());
+        require!(receiver != vault_id.parse::<AccountId>().unwrap() && receiver != env::current_account_id(), "invalid receiver");
+        v.pending += 1;
+        self.vaults.insert(&token_id, &v);
+        Promise::new(vault_id.parse::<AccountId>().unwrap()).function_call(
+            "near_send".to_string(),
+            near_sdk::serde_json::to_vec(&near_sdk::serde_json::json!({"receiver": receiver.clone(), "amount": amount.0.to_string()})).unwrap(),
+            NearToken::from_yoctonear(0),
+            SEND_GAS,
+        ).then(
+            Self::ext(env::current_account_id())
+                .with_static_gas(CALLBACK_GAS)
+                .on_withdraw(token_id, None, receiver, amount),
+        )
+    }
+
+    #[private]
+    pub fn on_withdraw(&mut self, token_id: TokenId, ft_contract: Option<AccountId>, receiver_id: AccountId, amount: U128) -> bool {
+        let ok = !matches!(env::promise_result_checked(0, 0), Err(PromiseError::Failed));
+        if let Some(mut v) = self.vaults.get(&token_id) {
+            v.pending = v.pending.saturating_sub(1);
+            self.vaults.insert(&token_id, &v);
+        }
+        let event = near_sdk::serde_json::json!({
+            "standard": "birthday_vault",
+            "version": "1.0.0",
+            "event": "withdraw",
+            "data": {
+                "token_id": token_id,
+                "ft_contract": ft_contract,
+                "receiver_id": receiver_id,
+                "amount": amount.0.to_string(),
+                "ok": ok
+            }
+        });
+        env::log_str(&format!("EVENT_JSON:{}", event));
+        ok
     }
 
     pub fn nft_token(&self, token_id: TokenId) -> Option<Token> {
