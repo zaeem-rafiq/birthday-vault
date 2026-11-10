@@ -55,7 +55,7 @@ pub struct Collection {
 
 # Step S5: minting
 
-Write only `contracts/collection/src/lib.rs`. `tests/tests/collection_mint_spec.rs` holds the 11 checks for this step, and the 9 checks from step S4 must still pass. Step S5 also changes `set_vault_code` to use the free balance rule written above. PLAN.md section 5.2 is the full design.
+Write only `contracts/collection/src/lib.rs`. `tests/tests/collection_mint_spec.rs` holds the 13 checks for this step, and the 9 checks from step S4 must still pass. Step S5 also changes `set_vault_code` to use the free balance rule written above. The rule uses 0.0001 NEAR per byte, which is ten times `env::storage_byte_cost()`. PLAN.md section 5.2 is the full design.
 
 **Constants (yoctoNEAR and gas)**
 
@@ -108,6 +108,55 @@ mk.and(reg).then(Self::ext(env::current_account_id()).with_static_gas(MINT_CALLB
 |---|---|
 | `pub fn vault_info(&self, token_id: TokenId) -> Option<serde_json::Value>` | `null` if there is no `VaultState`. Otherwise `{"vault_id", "owner_id", "guardian", "child", "unlock_ns": string, "locked": now < unlock_ns, "pending", "mode", "usdc"}`. |
 | `pub fn vault_info_by_account(&self, vault_id: AccountId) -> Option<serde_json::Value>` | The same data. `vault_id` must end with `.<collection>`. The token id is the part before that suffix. `null` otherwise. |
-| `nft_token`, `nft_tokens`, `nft_supply_for_owner`, `nft_tokens_for_owner` | Delegate to `self.nft`. Write `impl NonFungibleTokenEnumeration for Collection` by hand. Add `pub fn nft_token(&self, token_id: TokenId) -> Option<Token>`. |
+| `nft_token`, `nft_tokens`, `nft_supply_for_owner`, `nft_tokens_for_owner` | Delegate to `self.nft`. Write `#[near] impl NonFungibleTokenEnumeration for Collection` by hand. Without `#[near]` the methods cannot be called. Mark `impl NonFungibleTokenMetadataProvider for Collection` with `#[near]` too, and keep no plain `nft_total_supply` or `nft_metadata` method beside them. Add `pub fn nft_token(&self, token_id: TokenId) -> Option<Token>`. |
 
 **Imports you will add:** `near_sdk::{Gas, PromiseError}`, `near_sdk::json_types::U128`, `near_contract_standards::non_fungible_token::events::NftMint`, `near_contract_standards::non_fungible_token::enumeration::NonFungibleTokenEnumeration`.
+
+# Step S6: withdrawals
+
+Write only `contracts/collection/src/lib.rs`. `tests/tests/collection_withdraw_spec.rs` holds the 12 checks for this step. The 22 checks from steps S4 and S5 must still pass. PLAN.md section 5.4 is the full design.
+
+**Constants**
+
+```rust
+const SEND_GAS: Gas = Gas::from_tgas(40);
+const CALLBACK_GAS: Gas = Gas::from_tgas(30);
+const MIN_WITHDRAW_GAS: Gas = Gas::from_tgas(90);
+```
+
+**`#[payable] pub fn withdraw(&mut self, token_id: TokenId, ft_contract: AccountId, amount: U128, receiver_id: Option<AccountId>) -> Promise`**
+
+Check in this order, and panic with the message shown:
+
+1. `near_sdk::assert_one_yocto()`. It panics with `Requires attached deposit of exactly 1 yoctoNEAR`.
+2. `env::prepaid_gas() >= MIN_WITHDRAW_GAS`, else `not enough gas`.
+3. `let mut v = self.vaults.get(&token_id)`, else `no such vault`.
+4. `env::block_timestamp() >= v.unlock_ns`, else `locked`.
+5. `owner = self.nft.owner_by_id.get(&token_id).unwrap()`. `env::predecessor_account_id() == owner`, else `only the owner`.
+6. `v.pending == 0`, else `busy: a withdrawal is still settling`.
+7. `amount.0 > 0`, else `amount must be positive`.
+8. `receiver = receiver_id.unwrap_or(owner)`. `vault = format!("{token_id}.{collection}")`. The receiver must not equal the vault, the collection or `ft_contract`, else `invalid receiver`.
+
+Then add 1 to `v.pending`, save it with `self.vaults.insert(&token_id, &v)`, and return:
+
+```rust
+Promise::new(vault.parse().unwrap()).function_call(
+    "ft_send".to_string(),
+    near_sdk::serde_json::to_vec(&near_sdk::serde_json::json!({"token": ft_contract, "receiver": receiver, "amount": amount.0.to_string()})).unwrap(),
+    NearToken::from_yoctonear(0), SEND_GAS)
+.then(Self::ext(env::current_account_id()).with_static_gas(CALLBACK_GAS)
+    .on_withdraw(token_id, Some(ft_contract), receiver, amount))
+```
+
+**`#[payable] pub fn withdraw_near(&mut self, token_id: TokenId, amount: U128, receiver_id: Option<AccountId>) -> Promise`**
+
+The same checks 1 to 8, except that the receiver must not equal the vault or the collection. Call `near_send` on the vault with `{"receiver": receiver, "amount": amount.0.to_string()}`, `SEND_GAS` and no deposit. Then call `on_withdraw(token_id, None, receiver, amount)` the same way.
+
+**`#[private] pub fn on_withdraw(&mut self, token_id: TokenId, ft_contract: Option<AccountId>, receiver_id: AccountId, amount: U128) -> bool`**
+
+- `let ok = !matches!(env::promise_result_checked(0, 0), Err(PromiseError::Failed));`. A `TooLong` result counts as success.
+- If a `VaultState` exists for `token_id`, set `pending = pending.saturating_sub(1)` and insert it once. This method must never panic.
+- Log one event with `env::log_str`: `EVENT_JSON:` followed by `{"standard":"birthday_vault","version":"1.0.0","event":"withdraw","data":{"token_id":..,"ft_contract":..,"receiver_id":..,"amount":"<digits>","ok":ok}}`. `ft_contract` is `null` for a NEAR withdrawal.
+- Return `ok`.
+
+The vault already keeps stray tokens and sends stray NFTs back. `tests/tests/vault_spec.rs` checks that. Nothing can leave a vault before `unlock_ns`, because `withdraw` and `withdraw_near` are the only way out.

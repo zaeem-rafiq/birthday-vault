@@ -1,4 +1,4 @@
-//! The 11 checks for contracts/collection, step S5: minting.
+//! The 13 checks for contracts/collection, step S5: minting.
 use near_workspaces::network::Sandbox;
 use near_workspaces::result::ExecutionFinalResult;
 use near_workspaces::types::{Gas, NearToken};
@@ -106,6 +106,7 @@ async fn the_vault_has_code_and_no_keys() -> anyhow::Result<()> {
     let unlock = now(&s).await? + 60_000_000_000;
     assert!(mint(&s, &s.guardian, "child.test.near", unlock, None, MINT_COST).await?.is_success());
     let vault: near_workspaces::AccountId = format!("bv-1.{}", s.coll.id()).parse()?;
+    assert_eq!(balance(&s, &vault).await?, FUNDING, "the vault must hold exactly VAULT_FUNDING");
     let keys = s.worker.view_access_keys(&vault).await?;
     assert!(keys.is_empty(), "the vault must have no access keys");
     let r = s.guardian.call(&vault, "ft_on_transfer").args_json(json!({ "sender_id": s.guardian.id(), "amount": "1", "msg": "" })).transact().await?;
@@ -171,7 +172,8 @@ async fn mint_input_validation() -> anyhow::Result<()> {
 async fn mint_needs_vault_code() -> anyhow::Result<()> {
     let s = setup(false, false).await?;
     let unlock = now(&s).await? + 60_000_000_000;
-    assert!(mint(&s, &s.guardian, "child.test.near", unlock, None, MINT_COST).await?.is_failure());
+    let r = mint(&s, &s.guardian, "child.test.near", unlock, None, MINT_COST).await?;
+    assert!(r.is_failure() && format!("{:?}", r.failures()).contains("vault code not set"), "{:?}", r.failures());
     Ok(())
 }
 
@@ -183,6 +185,37 @@ async fn mint_fails_cleanly_if_registration_fails() -> anyhow::Result<()> {
     let r = mint(&s, &s.guardian, "child.test.near", unlock, None, MINT_COST).await?;
     let spent = before - balance(&s, s.guardian.id()).await?;
     assert!(spent.abs_diff(FUNDING + burnt(&r)) <= TOLERANCE, "refund must keep only the vault funding: spent {spent}");
+    assert_eq!(supply(&s).await?, "0");
+    let minted: bool = r.json()?;
+    assert!(!minted, "a failed mint must return false");
+    Ok(())
+}
+
+#[tokio::test]
+async fn mint_fails_cleanly_if_account_exists() -> anyhow::Result<()> {
+    let s = setup(false, true).await?;
+    // Take the next vault id first, so account creation fails and registration succeeds.
+    s.coll.as_account().create_subaccount("bv-1").initial_balance(NearToken::from_millinear(10)).transact().await?.into_result()?;
+    let unlock = now(&s).await? + 60_000_000_000;
+    let before = balance(&s, s.guardian.id()).await?;
+    let r = mint(&s, &s.guardian, "child.test.near", unlock, None, MINT_COST).await?;
+    let spent = before - balance(&s, s.guardian.id()).await?;
+    assert!(spent.abs_diff(REGISTRATION + burnt(&r)) <= TOLERANCE, "refund must keep only the registration: spent {spent}");
+    assert_eq!(supply(&s).await?, "0", "no NFT for an account the collection did not create");
+    let info: Value = s.coll.view("vault_info").args_json(json!({ "token_id": "bv-1" })).await?.json()?;
+    assert!(info.is_null());
+    let minted: bool = r.json()?;
+    assert!(!minted, "a failed mint must return false");
+    Ok(())
+}
+
+#[tokio::test]
+async fn on_vault_created_is_private() -> anyhow::Result<()> {
+    let s = setup(false, true).await?;
+    let r = s.guardian.call(s.coll.id(), "on_vault_created")
+        .args_json(json!({ "token_id": "bv-7", "guardian": s.guardian.id(), "child": "child.test.near", "unlock_ns": "1", "title": null, "payer": s.guardian.id(), "deposit": "0" }))
+        .max_gas().transact().await?;
+    assert!(r.is_failure() && format!("{:?}", r.failures()).contains("Method on_vault_created is private"), "{:?}", r.failures());
     assert_eq!(supply(&s).await?, "0");
     Ok(())
 }
