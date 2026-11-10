@@ -13,8 +13,8 @@ Phase 0 is done. Owner still owes: a named .near account from Meteor Wallet by t
 | S3 | Hostile token | Gemma | Passed 9 Nov (40 minutes, 79 tool calls); no independent review, because it is a test double that is never deployed |
 | S4 | Collection state, init, mode rule (T9, T23) | Gemma | Passed 9 Nov (19 minutes). Mutants: 3 of 4 caught; the low-balance refusal is untested, add it in S5. Review with the whole collection after S7. |
 | S5 | set_vault_code and mint flow (T3b, T8, T15, T22, T24, T26, T29) | Gemma, then Claude | Gemma passed 9 of 11 in its hour, 181 tool calls. Claude fixed the byte price and the #[near] views, and fixed one broken check. Breaks: 14 of 20 caught at first; 6 new checks added, now 20 of 20. 13 checks. |
-| S6 | Withdrawals (T1, T11 second withdrawal, T12-T14, T16, T17, T20) | Gemma | Running since 9 Nov, 12 checks. Hidden reference passes all 12, and 18 of 18 breaks are caught. |
-| S7 | Transfer guard and child claim (T4-T7, T10, T11 transfer and claim, T18, T19, T25) | Gemma | Fix the mint event: Gemma's is not the standard nft_mint event, so wallets may not show the NFT. |
+| S6 | Withdrawals (T1, T11 second withdrawal, T12-T14, T16, T17, T20) | Gemma | Passed 9 Nov in 26.5 minutes, 16 tool calls, no help. Review added a 13th check for withdraw_near's caller rules. Breaks: 18 of 18 on the reference, 14 of 14 on Gemma's code. |
+| S7 | Transfer guard, child claim, standard mint event (T4-T7, T10, T11 transfer and claim, T18, T19, T25) | Gemma | Running since 9 Nov, 11 checks. Hidden reference passes all 46 collection checks, and 16 of 16 breaks are caught. |
 | S8 | Demo hub (T27, T28) | Gemma | |
 | S9 | Measure gas and storage, update constants, ./check, FEATURES.md, CI | Claude | |
 
