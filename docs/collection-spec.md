@@ -114,7 +114,7 @@ mk.and(reg).then(Self::ext(env::current_account_id()).with_static_gas(MINT_CALLB
 
 # Step S6: withdrawals
 
-Write only `contracts/collection/src/lib.rs`. `tests/tests/collection_withdraw_spec.rs` holds the 12 checks for this step. The 22 checks from steps S4 and S5 must still pass. PLAN.md section 5.4 is the full design.
+Write only `contracts/collection/src/lib.rs`. `tests/tests/collection_withdraw_spec.rs` holds the 13 checks for this step. The 22 checks from steps S4 and S5 must still pass. PLAN.md section 5.4 is the full design.
 
 **Constants**
 
@@ -160,3 +160,52 @@ The same checks 1 to 8, except that the receiver must not equal the vault or the
 - Return `ok`.
 
 The vault already keeps stray tokens and sends stray NFTs back. `tests/tests/vault_spec.rs` checks that. Nothing can leave a vault before `unlock_ns`, because `withdraw` and `withdraw_near` are the only way out.
+
+# Step S7: transfer guard, child claim and standard events
+
+Write only `contracts/collection/src/lib.rs`. `tests/tests/collection_transfer_spec.rs` holds the 11 checks for this step. The 35 checks from steps S4 to S6 must still pass. PLAN.md sections 5.3 and 5.5 are the full design.
+
+**Imports you will add:** `near_contract_standards::non_fungible_token::core::NonFungibleTokenCore` (already there), `near_contract_standards::non_fungible_token::events::{NftMint, NftTransfer}`, `near_sdk::PromiseOrValue`.
+
+**Standard mint event.** Delete the `CollectionEvents` enum. In `on_vault_created`, emit the library's event instead: `NftMint { owner_id: &guardian, token_ids: &[token_id.as_str()], memo: None }.emit();`. It logs `{"standard":"nep171","version":"1.0.0","event":"nft_mint","data":[{"owner_id":..,"token_ids":[..]}]}`. Wallets and explorers read this form. `token_ids` takes `&str` values, so pass `token_id.as_str()`.
+
+**Guard.** Add this private helper inside `impl Collection`, without `pub`:
+
+```rust
+fn guard(&self, token_id: &TokenId, receiver: &AccountId) {
+    let v = self.vaults.get(token_id).unwrap_or_else(|| env::panic_str("no such vault"));
+    require!(v.pending == 0, "busy: a withdrawal is still settling");
+    let me = env::current_account_id();
+    require!(*receiver != me && !receiver.as_str().ends_with(&format!(".{me}")), "invalid receiver");
+    let owner = self.nft.owner_by_id.get(token_id).unwrap();
+    if env::block_timestamp() < v.unlock_ns {
+        require!(env::predecessor_account_id() == owner, "only the owner");
+        require!(*receiver == v.guardian || *receiver == v.child, "locked: only guardian and child");
+    }
+}
+```
+
+**`#[near] impl NonFungibleTokenCore for Collection`.** Write it by hand. Delete the plain `pub fn nft_token` from `impl Collection`, because this impl now provides it.
+
+| Method | Body |
+|---|---|
+| `#[payable] fn nft_transfer(&mut self, receiver_id: AccountId, token_id: TokenId, approval_id: Option<u64>, memo: Option<String>)` | `self.guard(&token_id, &receiver_id);` then `self.nft.nft_transfer(receiver_id, token_id, approval_id, memo)`. The library checks the 1 yoctoNEAR, the owner, and emits `nft_transfer`. |
+| `#[payable] fn nft_transfer_call(&mut self, receiver_id: AccountId, token_id: TokenId, approval_id: Option<u64>, memo: Option<String>, msg: String) -> PromiseOrValue<bool>` | `env::panic_str("disabled: use nft_transfer")`. Keep the argument names exactly, because near-sdk reads them as JSON field names. Put `#[allow(unused_variables)]` on the method instead of renaming them. |
+| `fn nft_token(&self, token_id: TokenId) -> Option<Token>` | `self.nft.nft_token(token_id)` |
+
+Do not add `nft_approve`, `nft_revoke`, `nft_revoke_all`, `nft_is_approved` or `nft_resolve_transfer`. Do not implement `NonFungibleTokenResolver`.
+
+**`#[payable] pub fn claim_as_child(&mut self, token_id: TokenId)`**
+
+Check in this order, and panic with the message shown:
+
+1. `near_sdk::assert_one_yocto()`.
+2. `let v = self.vaults.get(&token_id)`, else `no such vault`.
+3. `env::predecessor_account_id() == v.child`, else `only the child`.
+4. `env::block_timestamp() >= v.unlock_ns`, else `locked`.
+5. `owner = self.nft.owner_by_id.get(&token_id).unwrap()`. `owner == v.guardian`, else `the guardian no longer holds it`.
+6. `v.pending == 0`, else `busy: a withdrawal is still settling`.
+
+Then `self.nft.internal_transfer_unguarded(&token_id, &owner, &v.child);` and emit `NftTransfer { old_owner_id: &owner, new_owner_id: &v.child, token_ids: &[token_id.as_str()], authorized_id: None, memo: Some("child_claim") }.emit();`.
+
+`vault_info` reads `owner_id` from `self.nft`, so it follows every transfer and claim.

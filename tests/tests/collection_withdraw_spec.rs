@@ -1,4 +1,4 @@
-//! The 12 checks for contracts/collection, step S6: withdrawals.
+//! The 13 checks for contracts/collection, step S6: withdrawals.
 use near_workspaces::network::Sandbox;
 use near_workspaces::operations::Function;
 use near_workspaces::result::ExecutionFinalResult;
@@ -280,6 +280,36 @@ async fn withdraw_near_rules() -> anyhow::Result<()> {
     assert!(ok);
     let after = s.worker.view_account(s.friend.id()).await?.balance.as_yoctonear();
     assert_eq!(after - before, half, "the receiver gets exactly the amount");
+    assert_eq!(pending(&s).await?, 0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn withdraw_near_caller_and_input_rules() -> anyhow::Result<()> {
+    let s = setup().await?;
+    assert!(s.guardian.transfer_near(&s.vault, NearToken::from_near(1)).await?.is_success());
+    wait_unlock(&s).await?;
+    let half = NearToken::from_millinear(500).as_yoctonear();
+    let cases: [(&Account, &str, u128, u64, u128, &str); 6] = [
+        (&s.guardian, "bv-1", half, 100, 0, ONE_YOCTO),
+        (&s.guardian, "bv-1", half, 50, 1, "not enough gas"),
+        (&s.guardian, "bv-9", half, 100, 1, "no such vault"),
+        (&s.friend, "bv-1", half, 100, 1, "only the owner"),
+        (&s.child, "bv-1", half, 100, 1, "only the owner"),
+        (&s.guardian, "bv-1", 0, 100, 1, "amount must be positive"),
+    ];
+    for (who, token, amount, tgas, yocto, msg) in cases {
+        let r = who.call(s.coll.id(), "withdraw_near")
+            .args_json(json!({ "token_id": token, "amount": amount.to_string(), "receiver_id": null }))
+            .deposit(NearToken::from_yoctonear(yocto)).gas(Gas::from_tgas(tgas)).transact().await?;
+        assert!(fails_with(&r, msg), "expected '{msg}', got {:?}", r.failures());
+    }
+    let call = || Function::new("withdraw_near")
+        .args_json(json!({ "token_id": "bv-1", "amount": half.to_string(), "receiver_id": null }))
+        .deposit(NearToken::from_yoctonear(1)).gas(Gas::from_tgas(100));
+    // Both calls run in one receipt. The first raises pending, so the second must refuse.
+    let r = s.guardian.batch(s.coll.id()).call(call()).call(call()).transact().await?;
+    assert!(fails_with(&r, BUSY), "{:?}", r.failures());
     assert_eq!(pending(&s).await?, 0);
     Ok(())
 }

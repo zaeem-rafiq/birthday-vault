@@ -7,7 +7,7 @@ cd "$ROOT" || exit 99
 # shellcheck disable=SC1091
 source "$ROOT/scripts/env.sh"
 
-BASE="build/s6-base"
+BASE="build/s7-base"
 WASM="target/near/collection/collection.wasm"
 TEST_NAME="vault_rejects_every_caller_but_parent"
 LOG="$(mktemp -t collection-check)"
@@ -66,8 +66,8 @@ else
   tail -25 "$LOG"
 fi
 
-# 4. Every visible check passes: step S4's 9, step S5's 13 and step S6's 12.
-for spec in collection_init_spec:9 collection_mint_spec:13 collection_withdraw_spec:12; do
+# 4. Every visible check passes: step S4's 9, step S5's 13, step S6's 13 and step S7's 11.
+for spec in collection_init_spec:9 collection_mint_spec:13 collection_withdraw_spec:13 collection_transfer_spec:11; do
   name=${spec%%:*}; want=${spec##*:}
   if cargo test --locked -p tests --test "$name" -- --test-threads=3 >"$LOG" 2>&1 \
     && grep -q "test result: ok. $want passed" "$LOG"; then
