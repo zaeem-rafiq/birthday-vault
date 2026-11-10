@@ -12,9 +12,9 @@ Phase 0 is done. Owner still owes: a named .near account from Meteor Wallet by t
 | S2 | tUSDC from the near-sdk example | Gemma | Passed 9 Nov (8 minutes); reviewed, storage drain fixed |
 | S3 | Hostile token | Gemma | Passed 9 Nov (40 minutes, 79 tool calls); no independent review, because it is a test double that is never deployed |
 | S4 | Collection state, init, mode rule (T9, T23) | Gemma | Passed 9 Nov (19 minutes). Mutants: 3 of 4 caught; the low-balance refusal is untested, add it in S5. Review with the whole collection after S7. |
-| S5 | set_vault_code and mint flow (T3b, T8, T15, T22, T24, T26, T29) | Gemma | Next |
-| S6 | Withdrawals (T1, T10-T14, T16, T17, T20, T21) | Gemma | |
-| S7 | Transfer guard and child claim (T4-T7, T18, T19, T25) | Gemma | |
+| S5 | set_vault_code and mint flow (T3b, T8, T15, T22, T24, T26, T29) | Gemma, then Claude | Gemma passed 9 of 11 in its hour, 181 tool calls. Claude fixed the byte price and the #[near] views, and fixed one broken check. Breaks: 14 of 20 caught at first; 6 new checks added, now 20 of 20. 13 checks. |
+| S6 | Withdrawals (T1, T11 second withdrawal, T12-T14, T16, T17, T20) | Gemma | Running since 9 Nov, 12 checks. Hidden reference passes all 12, and 18 of 18 breaks are caught. |
+| S7 | Transfer guard and child claim (T4-T7, T10, T11 transfer and claim, T18, T19, T25) | Gemma | Fix the mint event: Gemma's is not the standard nft_mint event, so wallets may not show the NFT. |
 | S8 | Demo hub (T27, T28) | Gemma | |
 | S9 | Measure gas and storage, update constants, ./check, FEATURES.md, CI | Claude | |
 
@@ -25,3 +25,12 @@ T3b as written cannot pass with near-sdk. A contract that uses near-sdk `Promise
 ## Method change
 
 From S4 on, skip the full reference contract. Prove each check with mutants of Gemma's passing code. If Gemma cannot pass, check the spec and tests first.
+
+## Moved checks
+
+- T10 and the transfer and claim parts of T11 moved from S6 to S7, because they need nft_transfer and claim_as_child.
+- T21 moved to the web phase. The contract returns no balances, so the page does the counting and must ask only the configured USDC.
+
+## Method change, 9 Nov evening
+
+Before Gemma starts a step, Claude proves its checks against a hidden reference and breaks the reference on purpose. S5 lost most of Gemma's hour to a check that could never pass, because the network refused the setup transaction.
