@@ -5,6 +5,7 @@ members = [
     "contracts/test-token",
     "contracts/tusdc",
     "contracts/hostile-token",
+    "contracts/demo-hub",
     "tests",
 ]
 resolver = "3"

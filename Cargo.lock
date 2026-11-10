@@ -541,6 +541,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "demo_hub"
+version = "0.1.0"
+dependencies = [
+ "near-sdk",
+]
+
+[[package]]
 name = "deranged"
 version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

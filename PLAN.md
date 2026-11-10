@@ -765,6 +765,8 @@ Have a fresh delegated helper clone the public repository into a temporary folde
 | 9 Nov | T3b checks the source and the empty key list, not wasm imports | near-sdk `Promise` links add-key, deploy and stake imports in every contract that uses it, so an import check cannot pass for the collection |
 | 9 Nov | Repository starts private | Gitleaks and owner approval come before publication |
 | 9 Nov | Mainnet collection key is deleted only after a real withdrawal | A key still allows a fix if the first real withdrawal fails |
+| 9 Nov | The demo hub takes its time windows and limits at init: one hour, one day, 20 and 100 on testnet | Tests can then prove the rolling limits in seconds instead of hours. There is still no setter |
+| 9 Nov | T10 and the transfer and claim parts of T11 are tested in step S7, and T21 in the web phase | They need transfers and the claim. The contract returns no balances, so the page does the counting |
 
 ---
 
