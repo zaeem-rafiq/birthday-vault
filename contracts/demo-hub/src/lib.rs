@@ -33,10 +33,7 @@ impl DemoHub {
     fn implicit_id(pk: &PublicKey) -> AccountId {
         let bytes = pk.as_bytes();
         // pk.as_bytes()[0] is the curve byte. We want bytes from index 1 onwards.
-        let hex: String = bytes[1..]
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect();
+        let hex: String = bytes[1..].iter().map(|b| format!("{b:02x}")).collect();
         hex.parse().unwrap()
     }
 
@@ -53,7 +50,10 @@ impl DemoHub {
             "only the hub"
         );
         require!(
-            hour_ns.0 > 0 && day_ns.0 >= hour_ns.0 && hourly_limit > 0 && hourly_limit <= daily_limit,
+            hour_ns.0 > 0
+                && day_ns.0 >= hour_ns.0
+                && hourly_limit > 0
+                && hourly_limit <= daily_limit,
             "bad limits"
         );
 
@@ -114,22 +114,32 @@ impl DemoHub {
             .filter(|&&t| now.saturating_sub(t) < self.hour_ns)
             .count() as u32;
 
-        require!(hourly_count < self.hourly_limit, "hourly limit reached, try again later");
+        require!(
+            hourly_count < self.hourly_limit,
+            "hourly limit reached, try again later"
+        );
         let daily_count = self.starts.len() as u32;
-        require!(daily_count < self.daily_limit, "daily limit reached, try again tomorrow");
+        require!(
+            daily_count < self.daily_limit,
+            "daily limit reached, try again tomorrow"
+        );
 
         self.starts.push(now);
         self.used.insert(guardian.clone());
 
-        Promise::new(guardian.clone()).transfer(GUARDIAN_NEAR).detach();
+        Promise::new(guardian.clone())
+            .transfer(GUARDIAN_NEAR)
+            .detach();
         Promise::new(child.clone()).transfer(CHILD_NEAR).detach();
         Promise::new(buyer.clone()).transfer(BUYER_NEAR).detach();
 
         Promise::new(self.usdc.clone())
             .function_call(
                 "faucet".to_string(),
-                near_sdk::serde_json::to_vec(&near_sdk::serde_json::json!({ "account_id": guardian }))
-                    .unwrap(),
+                near_sdk::serde_json::to_vec(
+                    &near_sdk::serde_json::json!({ "account_id": guardian }),
+                )
+                .unwrap(),
                 NearToken::from_yoctonear(0),
                 USDC_CALL_GAS,
             )
