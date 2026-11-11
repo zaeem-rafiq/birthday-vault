@@ -67,3 +67,8 @@ Before Gemma starts a step, Claude proves its checks against a hidden reference 
 - End-to-end tests run the real contracts on a local sandbox started by `tests/examples/e2e_sandbox.rs`; only 1Click is stubbed. `FEATURES.md` has 9 rows, each proved by an end-to-end test, and `./check` now runs the feature checker and the web checks.
 - Still to do for Phase 3: the final testnet collection id for the public build, the Render steps in `docs/owner-steps.md`, and the owner's PUBLISH.
 
+
+## Integration and demo supply, 11 Nov evening
+
+- Branch `build/integrate` merges `build/foundation` (with PR #2), `build/testnet-final`, `build/phase3-web` and `build/license-and-tag`. The only conflicts were added rows in PLAN.md section 13 and in this file; both sides were kept.
+- Hub refill for the 39 NEAR target in PLAN section 2: faucet accounts `bv-faucet-c1111.testnet` to `bv-faucet-f1111.testnet` each sent 9.9 testnet NEAR to the hub. The hub read 50.70 NEAR on RPC afterwards (1.32 NEAR of it locked for storage). The 8 pool keys each hold an allowance of about 1 NEAR. Recheck both each morning, 16 to 18 Nov.
