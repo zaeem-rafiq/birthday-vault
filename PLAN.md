@@ -74,6 +74,27 @@ Run ./check before reporting any work as done.
 
 **One sentence:** A crypto gift for a child that relatives can add to from the wallet they already use, and nobody can open until the child turns 18.
 
+**Problem:** A relative who keeps dollars (USDC) in a crypto wallet has no simple way to set money aside for a child so that nobody can spend it before a chosen date. If they send it to a parent's wallet, the parent can spend it at once. If their dollars are on another chain, sending them to NEAR normally takes a bridge and a NEAR account.
+
+**Who it is for**
+
+| Person | Who they are |
+|---|---|
+| Guardian | A parent with a NEAR account who creates the vault and names the child's NEAR account. |
+| Relative | Someone who already holds USDC on Base, Arbitrum, Ethereum or Solana in a self-custody wallet, not on an exchange. They get a link from the guardian. |
+| Judge | A hackathon judge, signed out, who tries the play-money demo on testnet. This is the person the build serves first. |
+
+**Why this works now:** Two things checked on 9 Nov make it possible without a server. The 1Click API accepts calls from a browser with no key, so a gift page can quote any of the four chains directly (section 3). NEAR global contracts let every vault share one copy of its code by hash, so a vault needs only 0.0025 NEAR of funding instead of its own contract deployment (section 5). The plan does not claim either feature is new.
+
+**Success on judging days (16 to 18 Nov)**
+
+| Measure | Target | How it is checked |
+|---|---|---|
+| Time to the key moment | A signed-out visitor reaches the refused early withdrawal within 2 minutes of opening the site, before the 3-minute lock ends | Time the full flow on the live site before judging, signed out |
+| Full flow | A visitor finishes a transfer or a child claim within 6 minutes | Same timed run |
+| Demo supply | At the start of each judging day, the hub holds at least 39 testnet NEAR: enough for its cap of 100 demos at 0.39 NEAR each | `near account view-account-summary` on the hub, each morning |
+| First screening | A fresh clone passes `./check` and follows the README with no help | The Phase 5 clean-clone helper |
+
 **Public name:** Birthday Vault. Never call it a bond, because a bond implies a guaranteed return and this earns nothing.
 
 **Rules of the product**
@@ -85,7 +106,8 @@ Run ./check before reporting any work as done.
 | Gifts | A relative pays USDC from another chain through the NEAR Intents 1Click API. |
 | Before the lock date | Nobody can withdraw. The NFT moves only between the guardian and the child account named at mint. |
 | After the lock date | The NFT is transferable. Whoever holds it can withdraw. |
-| Lost guardian key | After the lock date, the child account can claim the NFT while the guardian still holds it. |
+| Who gets the money at the lock date | The guardian minted the vault, so the guardian still holds the NFT on that date and can withdraw everything. The child gets the money only if the guardian sends the NFT to the child, or the child claims it first. The limits page and the video say this plainly. |
+| Child claim | After the lock date, the child account can claim the NFT at any time while the guardian still holds it. This works whether or not the guardian still has their key. If the guardian withdraws first, the money is gone before the child claims. Whoever acts first wins. |
 | Privacy | Pages ask for a nickname only, because everything on the network is public. |
 
 **Out of scope:** interest or yield, marketplace listings and approvals, `nft_transfer_call`, a wallet-connect login, price charts, any admin or upgrade path, a real token sale, and native ETH, SOL or BTC gifts.
@@ -498,7 +520,7 @@ The docs disagree about deposits made after the deadline, so warn the sender not
 
 **Design:** Before styling, look at two or three products known for clear, warm first screens. One idea per screen and one main button. Make it readable from a step back. Check 375 px width and keyboard focus.
 
-**Limits page must say:** the balance earns nothing and inflation reduces it. The vault depends on this contract and this network lasting until the lock date. USDC's issuer can freeze an account. The code is unaudited. The public demo uses play money and shortened timers. A wrong child account cannot be corrected.
+**Limits page must say:** the balance earns nothing and inflation reduces it. The vault depends on this contract and this network lasting until the lock date. USDC's issuer can freeze an account. The code is unaudited. The public demo uses play money and shortened timers. A wrong child account cannot be corrected. On the lock date the guardian still holds the vault and can withdraw everything. The child gets it only if the guardian hands it over, or the child claims it first.
 
 ---
 
@@ -700,8 +722,8 @@ Have a fresh delegated helper clone the public repository into a temporary folde
 | 0:30 to 1:00 | So we built Birthday Vault. The rest of this demo is on NEAR's test network. Each vault is a NEP-171 NFT tied to its own NEAR sub-account. Relatives pay through the 1Click service in NEAR Intents, and it arrives as dollars. The sub-account has no keys, so only the contract can open it, and the contract checks the date. Here's the key list. It's empty. Her parents try to withdraw early, and the contract refuses. | Key list. Refused withdrawal in the explorer. |
 | 1:00 to 1:20 | For this demo we shortened the lock to three minutes. Time's up. Transfer the NFT, and the money and the right to withdraw go with it. The old owner tries to withdraw and gets refused. The Intents fee on that five-dollar gift was [N] cents. | Unlock, transfer, refused old owner, gift receipt. |
 | 1:20 to 1:35 | If her parents lose their keys, Maya can still claim it at eighteen from the account named when the vault was made. | Child claim, from a second demo run. |
-| 1:35 to 1:45 | The money stays put until she's old enough to decide what it's for. | The tree. |
-| 1:45 to 2:00 | It holds dollars and earns nothing, so inflation eats at it. It only works if this contract and this network last eighteen years. Most of this demo runs on NEAR's test network with a shortened timer. The five-dollar gift was real, and I set that vault to open in thirty days so I can get it back. | Limits screen. |
+| 1:35 to 1:45 | Nobody can touch the money before the date her parents chose. On that date her parents can hand it to her, or Maya can claim it herself. | The tree. |
+| 1:45 to 2:00 | It holds dollars and earns nothing, so inflation eats at it. On the lock date her parents still hold the vault, so they could take the money first. It only works if this contract and this network last eighteen years. Most of this demo runs on NEAR's test network with a shortened timer. The five-dollar gift was real, and I set that vault to open in thirty days so I can get it back. | Limits screen. |
 
 **Opening if the owner replies SKIP or the real gift fails:** Start on a live testnet vault refusing an early withdrawal, so a simulated gift is never the first screen. Label the play gift "Simulated gift on NEAR's test network". Change the last line to say no real money moved.
 
