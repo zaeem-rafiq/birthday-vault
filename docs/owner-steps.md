@@ -4,7 +4,9 @@ These are the steps only the owner takes. Claude prepares them and never handles
 
 ## Put the public site live on Render (after you reply PUBLISH)
 
-You need: a Render account signed in to GitHub, and the file `.env.render.local` in the project folder on the Mac. Claude tells you when the final testnet collection id is ready.
+You need: a Render account signed in to GitHub, and the file `.env.render.local` in the project folder on the Mac.
+
+The public contract ids are already in the code (`web/.env.production`): the collection `g2.birthday-vault-zr1109.testnet`, the hub and the play money. Render needs only the values below.
 
 1. Open https://dashboard.render.com and sign in.
 2. Click **New**, then **Static Site**.
@@ -14,12 +16,8 @@ You need: a Render account signed in to GitHub, and the file `.env.render.local`
 6. In **Root Directory**, type `web`.
 7. In **Build Command**, type `npm ci && npm run build`.
 8. In **Publish Directory**, type `out`.
-9. Open **Advanced**, then add these environment variables. Copy each value from `.env.render.local`, except the last three:
-   - `NEXT_PUBLIC_NETWORK`
-   - `NEXT_PUBLIC_HUB_ID`
-   - `NEXT_PUBLIC_USDC_ID`
-   - `NEXT_PUBLIC_HUB_KEYS`
-   - `NEXT_PUBLIC_COLLECTION_ID`: the collection id Claude gives you.
+9. Open **Advanced**, then add these three environment variables:
+   - `NEXT_PUBLIC_HUB_KEYS`: copy the value from `.env.render.local`.
    - `NODE_VERSION`: `26.11.0`
    - `NEXT_TELEMETRY_DISABLED`: `1`
 10. Click **Deploy Static Site**.
