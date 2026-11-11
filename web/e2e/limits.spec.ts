@@ -11,6 +11,7 @@ test("limits page lists the known limits", async ({ page }) => {
     "USDC's issuer can freeze an account.",
     "The code is unaudited.",
     "This demo uses play money and short timers.",
+    "Gifts from other wallets are a preview here.",
     "A wrong child account cannot be corrected.",
     "The guardian can take the money on the lock date.",
   ]) {

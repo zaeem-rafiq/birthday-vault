@@ -26,8 +26,10 @@ export function validRefund(chain: Chain, address: string): string | null {
  * The recipient a quote may name. A demo (testnet) vault id must never reach 1Click, so demo
  * vaults use the preview recipient, an existing mainnet account. Only a mainnet id is itself.
  */
-export function quoteRecipient(vaultId: string): string {
-  return isMainnetId(vaultId) ? vaultId : config.quotePreviewRecipient;
+export function quoteRecipient(vaultId: string, preview = config.quotePreviewRecipient): string {
+  if (isMainnetId(vaultId)) return vaultId;
+  // The stand-in must itself be a mainnet account, whatever the build setting says.
+  return isMainnetId(preview) ? preview : "wrap.near";
 }
 
 export type QuoteBody = {
@@ -79,6 +81,8 @@ export type Quote = {
 };
 
 export const QUOTE_SLOW_MESSAGE = "NEAR Intents did not answer in time. Try again in a minute.";
+export const QUOTE_ADDRESS_MESSAGE =
+  "Check your refund address. It must be a wallet address on the chosen chain.";
 export const QUOTE_TIMEOUT_MS = 15_000;
 
 /** Asks 1Click for a dry quote. Any failure becomes one plain message; it never hangs. */
@@ -94,10 +98,12 @@ export async function fetchPreviewQuote(body: QuoteBody, timeoutMs = QUOTE_TIMEO
     });
     const json = await res.json().catch(() => ({}));
     if (res.ok && json.quote) return json.quote as Quote;
-    if (res.status >= 400 && res.status < 500 && json.message) throw new Error(`NEAR Intents refused the quote: ${json.message}`);
+    // 1Click answers 400 for a refund address it will not use, sometimes with the text
+    // "Internal server error" (seen for a token contract address on 11 Nov 2026).
+    if (res.status >= 400 && res.status < 500) throw new Error(QUOTE_ADDRESS_MESSAGE);
     throw new Error(QUOTE_SLOW_MESSAGE);
   } catch (e) {
-    if (e instanceof Error && e.message.startsWith("NEAR Intents refused")) throw e;
+    if (e instanceof Error && e.message === QUOTE_ADDRESS_MESSAGE) throw e;
     throw new Error(QUOTE_SLOW_MESSAGE);
   } finally {
     clearTimeout(timer);

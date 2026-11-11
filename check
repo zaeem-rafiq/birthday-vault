@@ -50,10 +50,18 @@ cargo test --locked -p tests -- --test-threads=4
 lock=target/.web-check.lock
 got=0
 for _ in $(seq 1 180); do
-  if mkdir "$lock" 2>/dev/null; then got=1; break; fi
+  if mkdir "$lock" 2>/dev/null; then got=1; echo $$ > "$lock/pid"; break; fi
+  # A run that was killed leaves its lock behind. Take it over when its process is gone.
+  holder=$(cat "$lock/pid" 2>/dev/null || true)
+  if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
+    echo "Taking over a lock left by ./check process $holder, which is no longer running."
+    rm -f "$lock/pid"
+    rmdir "$lock" 2>/dev/null || true
+    continue
+  fi
   sleep 5
 done
-[ "$got" = 1 ] || { echo "Another ./check held $lock for 15 minutes. Remove it if no ./check is running."; exit 1; }
-trap 'rmdir "$lock" 2>/dev/null || true' EXIT
+[ "$got" = 1 ] || { echo "Another ./check held $lock for 15 minutes."; exit 1; }
+trap 'rm -f "$lock/pid"; rmdir "$lock" 2>/dev/null || true' EXIT
 (cd web && npm run lint && npm run typecheck && npm test && npm run build && npm run e2e)
 echo "CHECK PASS"

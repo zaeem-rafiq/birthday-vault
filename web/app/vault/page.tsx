@@ -26,6 +26,7 @@ import {
 type Load =
   | { kind: "loading" }
   | { kind: "missing"; reason: string }
+  | { kind: "unreachable" }
   | { kind: "ready"; info: VaultInfo; balance: bigint; keys: number | null };
 
 type Message = { tone: "ok" | "refused"; text: string } | null;
@@ -56,6 +57,10 @@ function VaultView() {
   const [message, setMessage] = useState<Message>(null);
   const [working, setWorking] = useState("");
   const [grew, setGrew] = useState(0);
+  // The lock state the current message and gift badge belong to. When the lock ends, both are
+  // stale ("still locked", "+$1.00"), so they are cleared during render (React's pattern for
+  // resetting state when an input changes).
+  const [shownFor, setShownFor] = useState<boolean | null>(null);
   const now = useNow(1000);
 
   useEffect(() => {
@@ -75,22 +80,45 @@ function VaultView() {
       setLoad({ kind: "missing", reason: "This is not a Birthday Vault address." });
       return;
     }
-    const info = await vaultInfo(id);
-    if (!info) {
-      setLoad({ kind: "missing", reason: "We could not find that vault." });
-      return;
+    try {
+      const info = await vaultInfo(id);
+      if (!info) {
+        setLoad({ kind: "missing", reason: "We could not find that vault." });
+        return;
+      }
+      const [balance, keys] = await Promise.all([
+        ftBalance(id),
+        accessKeyCount(id).catch(() => null),
+      ]);
+      setLoad({ kind: "ready", info, balance, keys });
+    } catch (e) {
+      // Keep showing the last good reading; only a first read with no answer shows the error.
+      setLoad((prev) => (prev.kind === "ready" ? prev : { kind: "unreachable" }));
+      throw e;
     }
-    const [balance, keys] = await Promise.all([
-      ftBalance(id),
-      accessKeyCount(id).catch(() => null),
-    ]);
-    setLoad({ kind: "ready", info, balance, keys });
   }, [id]);
 
   const kick = usePoll(refresh, 10_000);
 
   if (load.kind === "loading") {
     return <p className="pt-16 text-center text-muted">Reading the vault from the network…</p>;
+  }
+  if (load.kind === "unreachable") {
+    return (
+      <div className="pt-16 text-center" data-testid="vault-unreachable">
+        <h1 className="font-display text-3xl font-semibold">The test network did not answer</h1>
+        <p className="mt-3 text-muted">Your vault is safe. This page could not read it just now.</p>
+        <button
+          onClick={() => {
+            setLoad({ kind: "loading" });
+            kick();
+          }}
+          className="mt-6 rounded-xl bg-leaf px-6 py-3 font-semibold text-white hover:bg-leaf-dark"
+        >
+          Try again
+        </button>
+      </div>
+    );
   }
   if (load.kind === "missing") {
     return (
@@ -107,6 +135,13 @@ function VaultView() {
   const { info, balance, keys } = load;
   const unlockMs = Number(BigInt(info.unlock_ns) / BigInt(1_000_000));
   const locked = info.locked && now < unlockMs + 2000;
+  if (shownFor !== locked) {
+    setShownFor(locked);
+    if (shownFor !== null) {
+      setMessage(null);
+      setGrew(0);
+    }
+  }
   const stage = treeStage(balance);
   const roleOf = (acct: string): string => {
     if (!demo) return short(acct);
@@ -156,7 +191,7 @@ function VaultView() {
           <div className="w-40 sm:w-56 md:w-72" id="tree">
             <Tree stage={stage} />
           </div>
-          {grew > 0 && (
+          {grew > 0 && locked && (
             <p key={grew} className="mt-1 rounded-full bg-leaf px-3 py-1 text-sm font-semibold text-white" data-testid="grew">
               +$1.00 play gift
             </p>

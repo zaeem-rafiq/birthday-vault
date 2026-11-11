@@ -15,7 +15,7 @@ import {
   type Quote,
 } from "@/lib/quote";
 
-type Found = "checking" | "found" | "missing";
+type Found = "checking" | "found" | "missing" | "unreachable";
 
 function GiftView() {
   const id = useSearchParams().get("id") ?? "";
@@ -32,8 +32,12 @@ function GiftView() {
     let live = true;
     (async () => {
       if (isMainnetId(id) || !isDemoVaultId(id, config.collectionId)) return setFound("missing");
-      const info = await vaultInfo(id).catch(() => null);
-      if (live) setFound(info ? "found" : "missing");
+      try {
+        const info = await vaultInfo(id);
+        if (live) setFound(info ? "found" : "missing");
+      } catch {
+        if (live) setFound("unreachable");
+      }
     })();
     return () => {
       live = false;
@@ -70,6 +74,14 @@ function GiftView() {
   }, [found, chain, dollars, amountOk, refundTo, id, attempt]);
 
   if (found === "checking") return <p className="pt-16 text-center text-muted">Finding the vault…</p>;
+  if (found === "unreachable") {
+    return (
+      <div className="pt-16 text-center" data-testid="vault-unreachable">
+        <h1 className="font-display text-3xl font-semibold">The test network did not answer</h1>
+        <p className="mt-3 text-muted">This page could not read the vault just now. Reload to try again.</p>
+      </div>
+    );
+  }
   if (found === "missing") {
     return (
       <div className="pt-16 text-center" data-testid="vault-missing">

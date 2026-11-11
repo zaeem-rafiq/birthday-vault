@@ -51,21 +51,27 @@ export function validNickname(s: string): boolean {
   return NICKNAME_RULE.test(s) && s.trim().length > 0;
 }
 
+// Private windows can refuse storage. The demo then lives in memory: it still runs in this tab,
+// and a reload starts over.
+let memoryDemo: Demo | null = null;
+
 export function loadDemo(): Demo | null {
   try {
     const raw = localStorage.getItem(STORE);
-    return raw ? (JSON.parse(raw) as Demo) : null;
+    if (raw) return JSON.parse(raw) as Demo;
   } catch {
-    return null;
+    // Fall through to the copy in memory.
   }
+  return memoryDemo;
 }
 
 export function saveDemo(d: Demo | null): void {
+  memoryDemo = d;
   try {
     if (d) localStorage.setItem(STORE, JSON.stringify(d));
     else localStorage.removeItem(STORE);
   } catch {
-    // Private windows can refuse storage. The demo still runs; a reload just starts over.
+    // Storage refused: the copy in memory is enough for this tab.
   }
 }
 
@@ -84,6 +90,7 @@ export function newDemo(nickname: string): Demo {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export const BUSY_MESSAGE = "The demo is busy. Try again in a few minutes.";
+export const NETWORK_MESSAGE = "The test network did not answer. Try again in a moment.";
 
 /** Step 3: a random public hub key calls start_demo. Retries another key on a nonce clash. */
 export async function startOnHub(d: Demo): Promise<CallResult> {
@@ -116,19 +123,36 @@ export async function startOnHub(d: Demo): Promise<CallResult> {
 export async function waitForFunding(d: Demo, timeoutMs = 60_000): Promise<boolean> {
   const end = Date.now() + timeoutMs;
   while (Date.now() < end) {
-    const [g, c, b] = await Promise.all([
-      ftBalance(d.keys.guardian.id),
-      accountExists(d.keys.child.id),
-      accountExists(d.keys.buyer.id),
-    ]);
-    if (g >= PLAY_GRANT && c && b) return true;
+    try {
+      const [g, c, b] = await Promise.all([
+        ftBalance(d.keys.guardian.id),
+        accountExists(d.keys.child.id),
+        accountExists(d.keys.buyer.id),
+      ]);
+      if (g >= PLAY_GRANT && c && b) return true;
+    } catch {
+      // A failed read is not an answer; ask again.
+    }
     await sleep(1000);
   }
   return false;
 }
 
-/** Step 4: the guardian mints a vault for the child with a short lock. */
+async function guardianToken(d: Demo): Promise<string | undefined> {
+  const tokens = await view<{ token_id: string }[]>(config.collectionId, "nft_tokens_for_owner", {
+    account_id: d.keys.guardian.id,
+  });
+  return tokens?.[tokens.length - 1]?.token_id;
+}
+
+/** Step 4: the guardian mints a vault for the child with a short lock. Reuses one already made. */
 export async function mint(d: Demo): Promise<CallResult & { vaultId?: string; tokenId?: string }> {
+  try {
+    const existing = await guardianToken(d);
+    if (existing) return { ok: true, tokenId: existing, vaultId: `${existing}.${config.collectionId}` };
+  } catch {
+    return { ok: false, error: "The test network did not answer. Press Try an example again." };
+  }
   const unlockNs = (BigInt(Date.now()) + BigInt(config.lockSeconds * 1000)) * BigInt(1_000_000);
   const r = await call(
     d.keys.guardian.id,
@@ -144,10 +168,12 @@ export async function mint(d: Demo): Promise<CallResult & { vaultId?: string; to
     100,
   );
   if (!r.ok) return r;
-  const tokens = await view<{ token_id: string }[]>(config.collectionId, "nft_tokens_for_owner", {
-    account_id: d.keys.guardian.id,
-  });
-  const tokenId = tokens?.[tokens.length - 1]?.token_id;
+  let tokenId: string | undefined;
+  try {
+    tokenId = await guardianToken(d);
+  } catch {
+    return { ok: false, error: "The test network did not answer. Press Try an example again." };
+  }
   if (!tokenId) return { ok: false, error: "The vault was not created. Your deposit was refunded." };
   return { ok: true, tokenId, vaultId: `${tokenId}.${config.collectionId}` };
 }
@@ -173,7 +199,13 @@ export function sendPlayGift(d: Demo): Promise<CallResult> {
 
 /** Withdraws the whole vault balance as `who`. Refused while locked, or if `who` is not the owner. */
 export async function withdrawAll(d: Demo, who: Role): Promise<CallResult> {
-  const balance = await ftBalance(d.vaultId!);
+  let balance: bigint;
+  try {
+    balance = await ftBalance(d.vaultId!);
+  } catch {
+    return { ok: false, error: NETWORK_MESSAGE };
+  }
+  // Ask for at least 1 unit, so an empty vault still shows the contract's own answer.
   return call(
     d.keys[who].id,
     d.keys[who].secretKey,
@@ -221,6 +253,6 @@ export function refusalText(error: string): string {
   if (/only the owner/.test(error)) return "Refused by the contract: only the current owner can withdraw.";
   if (/busy/.test(error)) return "Refused: a withdrawal is still settling. Try again in a moment.";
   if (/no longer holds/.test(error)) return "Refused: the guardian no longer holds this vault.";
-  if (error === LOW_BALANCE_MESSAGE) return error;
+  if (error === LOW_BALANCE_MESSAGE || error === NETWORK_MESSAGE) return error;
   return `Refused: ${error}`;
 }

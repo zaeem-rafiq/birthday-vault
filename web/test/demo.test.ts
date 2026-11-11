@@ -49,3 +49,22 @@ describe("error reading", () => {
     expect(errorText(e)).toBe("locked");
   });
 });
+
+describe("review fixes", () => {
+  it("unwraps a failover error to the provider's own message", async () => {
+    const { errorText } = await import("@/lib/near");
+    const inner = new Error("Transaction nonce 7 must be larger than nonce of the used access key 9");
+    const outer = Object.assign(new Error("Exceeded 1 providers to execute request"), { errors: [inner] });
+    expect(errorText(outer)).toMatch(/nonce/);
+  });
+
+  it("keeps the demo in memory when the browser refuses storage", async () => {
+    const { loadDemo, newDemo, saveDemo } = await import("@/lib/demo");
+    // The test runs in Node, where localStorage does not exist, like a browser that refuses it.
+    const d = newDemo("Mia");
+    saveDemo(d);
+    expect(loadDemo()?.keys.guardian.id).toBe(d.keys.guardian.id);
+    saveDemo(null);
+    expect(loadDemo()).toBeNull();
+  });
+});
