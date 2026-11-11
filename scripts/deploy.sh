@@ -2,9 +2,9 @@
 # Deploys one Birthday Vault collection. Plan section 9, Phase 2.
 #   scripts/deploy.sh <testnet|mainnet> <funder> <collection-name> [--dry-run]
 # Uses only the near CLI, so signing keys stay in the macOS keychain. --dry-run builds,
-# prints sizes and costs, and signs nothing. Mainnet is refused unless scripts/mainnet.sh
-# runs it for the owner with OWNER_RUN=1. On testnet, scripts/setup-hub.sh must run first,
-# because the collection uses tusdc.<funder> as its USDC.
+# prints sizes and costs, and signs nothing. Mainnet is refused unless the option is --dry-run.
+# On testnet, scripts/setup-hub.sh must run first, because the collection uses tusdc.<funder>
+# as its USDC.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
@@ -14,14 +14,15 @@ NET=${1:?usage: deploy.sh <testnet|mainnet> <funder> <collection-name> [--dry-ru
 FUNDER=${2:?funder account}
 NAME=${3:?collection name, for example g1}
 DRY=${4:-}
+case "$DRY" in ""|--dry-run) ;; *) echo "Unknown option: $DRY" >&2; exit 1 ;; esac
 case "$NET" in
   testnet)
     MODE=Demo; MIN_NS=30000000000; MAX_NS=3600000000000; USDC="tusdc.$FUNDER" ;;
   mainnet)
     MODE=Production; MIN_NS=86400000000000; MAX_NS=1262304000000000000
     USDC=17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1
-    if [ "$DRY" != "--dry-run" ] && [ "${OWNER_RUN:-}" != 1 ]; then
-      echo "Refused: a mainnet deploy runs only through scripts/mainnet.sh, by the owner." >&2
+    if [ "$DRY" != "--dry-run" ]; then
+      echo "Refused: this script signs nothing on mainnet. Only --dry-run runs there." >&2
       exit 1
     fi ;;
   *) echo "The network must be testnet or mainnet." >&2; exit 1 ;;
