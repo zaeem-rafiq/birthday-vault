@@ -60,7 +60,7 @@ The balance earns nothing, and inflation reduces it. The vault works only if thi
 
 ## New code against baseline
 
-- **Baseline:** the `init` commit `5a06c27` (9 Nov 2026) is an empty repository. Tag `pre-hackathon`: [I CREATE THIS TAG].
+- **Baseline:** the `init` commit `5a06c27` (9 Nov 2026) holds only `AGENTS.md` and `PLAN.md`, with no code. Tag `pre-hackathon` points at that commit.
 - **New code:** everything in `contracts/`, `tests/`, `scripts/`, `web/` and `docs/`, written from 9 Nov 2026.
 - **Diff since baseline:** [LINK TO COMPARE VIEW: `pre-hackathon...hackathon-submission`]
 - **Derived code:** `contracts/tusdc` starts from the `fungible-token/ft` example in [near/near-sdk-rs](https://github.com/near/near-sdk-rs), tag `near-sdk-v5.30.1`. The pending-counter idea comes from [Deed](https://github.com/ClaudeOpusPremiumAgent/deed) (MIT). I wrote the code here new and copied no Deed file.
@@ -93,4 +93,4 @@ A wasm built locally matches the deployed code hash only with the same Rust and 
 
 ## License
 
-[LICENSE: I add the file with the public page (Phase 3).]
+MIT. See the `LICENSE` file.

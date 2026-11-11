@@ -770,6 +770,7 @@ Have a fresh delegated helper clone the public repository into a temporary folde
 | 11 Nov | Superseded the row above: the owner replied SKIP, so the gift is simulated and nothing is deployed on mainnet | The mainnet dry run priced the deploy at 3.30155 NEAR plus about 0.1 NEAR, which cannot be recovered. Phase 4 and its scripts are dropped; Phase 3 builds no `/proof` page; the video uses the SKIP opening in section 10. `hugegrain4592.near` stays the prize account and needs no NEAR |
 | 9 Nov | The demo hub takes its time windows and limits at init: one hour, one day, 20 and 100 on testnet | Tests can then prove the rolling limits in seconds instead of hours. There is still no setter |
 | 9 Nov | T10 and the transfer and claim parts of T11 are tested in step S7, and T21 in the web phase | They need transfers and the claim. The contract returns no balances, so the page does the counting |
+| 11 Nov | The licence is MIT, copyright 2026 Zaeem Khan. The tag `pre-hackathon` points at the empty `init` commit `5a06c27` | The event accepts any licence and names MIT as fine. MIT also matches Deed and near-sdk-rs, which the code credits. The `init` commit holds no code, so every file in the repository counts as new work |
 
 ---
 
