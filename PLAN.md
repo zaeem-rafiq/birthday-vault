@@ -804,6 +804,7 @@ Have a fresh delegated helper clone the public repository into a temporary folde
 | 11 Nov | Disclose that the guardian can withdraw on the lock date, instead of changing the contract | Contract changes have been frozen since the 10 Nov cutoff, and the video promised the child the money |
 | 9 Nov | The demo hub takes its time windows and limits at init: one hour, one day, 20 and 100 on testnet | Tests can then prove the rolling limits in seconds instead of hours. There is still no setter |
 | 9 Nov | T10 and the transfer and claim parts of T11 are tested in step S7, and T21 in the web phase | They need transfers and the claim. The contract returns no balances, so the page does the counting |
+| 11 Nov | The licence is MIT, copyright 2026 Zaeem Khan. The tag `pre-hackathon` points at the empty `init` commit `5a06c27` | The event accepts any licence and names MIT as fine. MIT also matches Deed and near-sdk-rs, which the code credits. The `init` commit holds no code, so every file in the repository counts as new work |
 
 ---
 
