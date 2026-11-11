@@ -78,13 +78,28 @@ export type Quote = {
   refundFee?: string;
 };
 
-export async function fetchPreviewQuote(body: QuoteBody): Promise<Quote> {
-  const res = await fetch(`${config.oneClickUrl}/quote`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json.quote) throw new Error(json.message || `Quote failed (${res.status})`);
-  return json.quote as Quote;
+export const QUOTE_SLOW_MESSAGE = "NEAR Intents did not answer in time. Try again in a minute.";
+export const QUOTE_TIMEOUT_MS = 15_000;
+
+/** Asks 1Click for a dry quote. Any failure becomes one plain message; it never hangs. */
+export async function fetchPreviewQuote(body: QuoteBody, timeoutMs = QUOTE_TIMEOUT_MS): Promise<Quote> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${config.oneClickUrl}/quote`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: abort.signal,
+    });
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.quote) return json.quote as Quote;
+    if (res.status >= 400 && res.status < 500 && json.message) throw new Error(`NEAR Intents refused the quote: ${json.message}`);
+    throw new Error(QUOTE_SLOW_MESSAGE);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("NEAR Intents refused")) throw e;
+    throw new Error(QUOTE_SLOW_MESSAGE);
+  } finally {
+    clearTimeout(timer);
+  }
 }

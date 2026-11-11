@@ -17,6 +17,7 @@ export function Tree({ stage }: { stage: number }) {
       data-stage={stage}
       className="block w-full h-auto"
     >
+      <circle cx="100" cy="104" r="92" fill="var(--color-leaf)" opacity="0.08" />
       <ellipse cx="100" cy="178" rx="70" ry="12" fill="var(--color-soil)" opacity="0.45" />
       <path d="M40 178 Q100 160 160 178 Z" fill="var(--color-soil)" />
       {/* Seed: only before the sprout */}

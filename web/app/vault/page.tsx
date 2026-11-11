@@ -55,6 +55,7 @@ function VaultView() {
   const [demo, setDemo] = useState<Demo | null>(null);
   const [message, setMessage] = useState<Message>(null);
   const [working, setWorking] = useState("");
+  const [grew, setGrew] = useState(0);
   const now = useNow(1000);
 
   useEffect(() => {
@@ -152,9 +153,14 @@ function VaultView() {
 
       <div className="mt-6 grid md:grid-cols-2 gap-8 items-center">
         <div className="flex flex-col items-center">
-          <div className="w-44 sm:w-60 md:w-72">
+          <div className="w-40 sm:w-56 md:w-72" id="tree">
             <Tree stage={stage} />
           </div>
+          {grew > 0 && (
+            <p key={grew} className="mt-1 rounded-full bg-leaf px-3 py-1 text-sm font-semibold text-white" data-testid="grew">
+              +$1.00 play gift
+            </p>
+          )}
         </div>
         <div>
           <h1 className="font-display text-3xl sm:text-4xl font-semibold">
@@ -205,7 +211,12 @@ function VaultView() {
             {demo && locked && (
               <>
                 <button
-                  onClick={() => act("gift", () => sendPlayGift(demo), "Play gift of $1.00 received. Watch the tree.")}
+                  onClick={async () => {
+                    if (await act("gift", () => sendPlayGift(demo), "Play gift of $1.00 received. Watch the tree.")) {
+                      setGrew((n) => n + 1);
+                      document.getElementById("tree")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }
+                  }}
                   disabled={!!working}
                   className="w-full rounded-xl bg-leaf px-6 py-4 text-lg font-semibold text-white hover:bg-leaf-dark disabled:opacity-50"
                 >

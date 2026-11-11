@@ -26,6 +26,7 @@ function GiftView() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteError, setQuoteError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -56,7 +57,7 @@ function GiftView() {
       } catch (e) {
         if (live) {
           setQuote(null);
-          setQuoteError(e instanceof Error ? e.message : "The quote service did not answer.");
+          setQuoteError(e instanceof Error ? e.message : "NEAR Intents did not answer in time. Try again in a minute.");
         }
       } finally {
         if (live) setLoading(false);
@@ -66,7 +67,7 @@ function GiftView() {
       live = false;
       clearTimeout(t);
     };
-  }, [found, chain, dollars, amountOk, refundTo, id]);
+  }, [found, chain, dollars, amountOk, refundTo, id, attempt]);
 
   if (found === "checking") return <p className="pt-16 text-center text-muted">Finding the vault…</p>;
   if (found === "missing") {
@@ -159,7 +160,18 @@ function GiftView() {
         <h2 className="font-semibold">Live price</h2>
         {!refundTo && <p className="mt-2 text-muted">Enter a refund address to see a live price.</p>}
         {refundTo && loading && <p className="mt-2 text-muted">Asking NEAR Intents…</p>}
-        {refundTo && !loading && quoteError && <p className="mt-2 text-alert">{quoteError}</p>}
+        {refundTo && !loading && quoteError && (
+          <div className="mt-2" data-testid="quote-error">
+            <p className="text-alert">{quoteError}</p>
+            <button
+              type="button"
+              onClick={() => setAttempt((n) => n + 1)}
+              className="mt-2 rounded-lg border-2 border-ink px-4 py-2 font-semibold hover:bg-cream"
+            >
+              Try again
+            </button>
+          </div>
+        )}
         {refundTo && amountOk && !loading && quote && (
           <dl className="mt-3 grid grid-cols-2 gap-y-2 text-sm">
             <dt className="text-muted">You pay</dt>
@@ -171,7 +183,7 @@ function GiftView() {
             <dt className="text-muted">At least</dt>
             <dd className="text-right">{(Number(quote.minAmountOut) / 1_000_000).toFixed(2)} USDC</dd>
             <dt className="text-muted">Fees</dt>
-            <dd className="text-right">${fee.toFixed(2)}</dd>
+            <dd className="text-right">{fee < 0.01 ? "under $0.01" : `$${fee.toFixed(2)}`}</dd>
             {quote.timeEstimate != null && (
               <>
                 <dt className="text-muted">Time</dt>

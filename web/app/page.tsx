@@ -27,7 +27,8 @@ const PHASE_TEXT: Record<Phase, string> = {
 
 export default function Home() {
   const router = useRouter();
-  const [nickname, setNickname] = useState("");
+  // Pre-filled, so the first click starts the example. Visitors can change it.
+  const [nickname, setNickname] = useState("Maya");
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<Demo | null>(null);
@@ -115,7 +116,6 @@ export default function Home() {
             onChange={(e) => setNickname(e.target.value)}
             maxLength={24}
             autoComplete="off"
-            placeholder="Maya"
             disabled={busy}
             className="w-full max-w-sm rounded-xl border border-line bg-paper px-4 py-3 text-lg"
           />

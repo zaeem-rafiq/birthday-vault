@@ -48,3 +48,18 @@ test("deposit address control is hidden", async ({ page }) => {
   await expect(page.getByText(/deposit address:/i)).toHaveCount(0);
   expect(bodies.every((b) => b.dry === true)).toBe(true);
 });
+
+test("gift page explains a slow quote service and can retry", async ({ page }) => {
+  let calls = 0;
+  await page.route("https://1click.chaindefuser.com/**", async (route) => {
+    calls += 1;
+    if (calls === 1) return route.fulfill({ status: 500, json: { message: "Failed to receive response within timeout" } });
+    return route.fulfill({ json: { quote: { amountInFormatted: "5.0", amountOutFormatted: "4.99", minAmountOut: "4949348" } } });
+  });
+  const id = await startExample(page, "Kai");
+  await page.goto(`/gift/?id=${encodeURIComponent(id)}`);
+  await page.getByLabel(/address, for refunds/).fill("0x1111111111111111111111111111111111111111");
+  await expect(page.getByTestId("quote-error")).toContainText("NEAR Intents did not answer in time.");
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByTestId("amount-out")).toHaveText("4.99 USDC");
+});
