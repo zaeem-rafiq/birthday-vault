@@ -71,12 +71,21 @@ UNLOCK=$(python3 -I -c "import time; print(time.time_ns() + $MIN_NS + 120_000_00
 send contract call-function as-transaction "$COLL" mint_vault \
   json-args "{\"child_id\":\"deploy-check-child.$FUNDER\",\"unlock_ns\":\"$UNLOCK\",\"title\":\"Deploy check\"}" \
   prepaid-gas '100 Tgas' attached-deposit '0.025 NEAR' sign-as "$FUNDER"
-view contract_info '{}'
+CINFO=$(view contract_info '{}')
+echo "$CINFO"
 INFO=$(view vault_info '{"token_id":"bv-1"}' 2>&1)
 echo "$INFO"
 echo "$INFO" | grep -q "\"vault_id\"" || { echo "FAIL: the test vault has no vault_info." >&2; exit 1; }
-KEYS=$(near account list-keys "bv-1.$COLL" network-config "$NET" now 2>&1)
+# list-keys prints an empty table for an account that does not exist, so also require that the
+# vault account exists and runs the published vault code (the same check as scripts/lock.sh).
+VCODE=$(echo "$CINFO" | grep -o '"vault_code_hash": "[0-9a-f]*"' | grep -o '[0-9a-f]\{64\}') \
+  || { echo "FAIL: the collection has no vault code hash." >&2; exit 1; }
+VSUM=$(near account view-account-summary "bv-1.$COLL" network-config "$NET" now 2>&1 || true)
+echo "$VSUM" | grep -q "Native account balance" || { echo "FAIL: the account bv-1.$COLL does not exist on $NET." >&2; exit 1; }
+echo "$VSUM" | grep "Global Contract" | grep -q "$VCODE" || { echo "FAIL: bv-1.$COLL does not run the vault code $VCODE." >&2; exit 1; }
+KEYS=$(near account list-keys "bv-1.$COLL" network-config "$NET" now 2>&1 || true)
 echo "$KEYS"
+echo "$KEYS" | grep -q '^+---' || { echo "FAIL: could not read the key list of bv-1.$COLL." >&2; exit 1; }
 if echo "$KEYS" | grep -qi "ed25519:"; then echo "FAIL: the test vault has an access key." >&2; exit 1; fi
 echo "DEPLOY CHECK PASS: $COLL is live on $NET with test vault bv-1.$COLL and no keys on the vault."
 echo "The collection still has its access key. Lock it with scripts/lock.sh $NET $COLL once the play flow passes (scripts/play-flow.sh)."
