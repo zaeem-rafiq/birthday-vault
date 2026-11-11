@@ -22,6 +22,7 @@ The public contract ids are already in the code (`web/.env.production`): the col
    - `NEXT_TELEMETRY_DISABLED`: `1`
 10. Click **Deploy Static Site**.
 11. Wait until the page shows **Live** with a green dot. This takes about 3 minutes.
-12. Copy the address that ends in `.onrender.com` and send it to Claude.
+12. Check the address at the top of the page. It must be exactly `https://birthday-vault.onrender.com`. If Render shows any other address, stop and tell Claude: every vault NFT's picture points at that exact address, and it cannot change.
+13. Send the address to Claude.
 
 The hub keys in `NEXT_PUBLIC_HUB_KEYS` are public on purpose. They can only start testnet demos, and the hub's daily limit caps their cost to testnet NEAR.

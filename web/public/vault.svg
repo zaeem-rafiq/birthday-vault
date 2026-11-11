@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Birthday Vault: a young tree growing from a seed">
+  <title>Birthday Vault</title>
+  <rect width="400" height="400" fill="#fbf6ec"/>
+  <circle cx="200" cy="190" r="150" fill="#2f7d4a" opacity="0.08"/>
+  <ellipse cx="200" cy="330" rx="140" ry="22" fill="#b98a5b" opacity="0.45"/>
+  <path d="M80 330 Q200 296 320 330 Z" fill="#b98a5b"/>
+  <path d="M200 332 L200 196" stroke="#7a5230" stroke-width="12" stroke-linecap="round"/>
+  <path d="M200 280 Q170 256 162 232 Q192 236 200 272" fill="#2f7d4a"/>
+  <path d="M200 272 Q228 240 248 236 Q240 264 200 284" fill="#2f7d4a"/>
+  <circle cx="200" cy="188" r="44" fill="#2f7d4a"/>
+  <circle cx="168" cy="212" r="28" fill="#1f5c35"/>
+  <circle cx="232" cy="212" r="28" fill="#1f5c35"/>
+</svg>
