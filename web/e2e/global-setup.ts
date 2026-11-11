@@ -6,7 +6,7 @@ import { createInterface } from "node:readline";
 import net from "node:net";
 import path from "node:path";
 
-export const PORT = 4173;
+import { E2E_PORT as PORT } from "./port";
 export const LOCK_SECONDS = 25;
 const web = path.resolve(__dirname, "..");
 const repo = path.resolve(web, "..");
@@ -45,7 +45,7 @@ function assertPortFree(port: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const probe = net.createServer();
     probe.once("error", () =>
-      reject(new Error(`Port ${port} is in use: another end-to-end run is active. ./check waits for it; run one at a time.`)),
+      reject(new Error(`Port ${port} is in use: another end-to-end run in this checkout is active. ./check waits for it; run one at a time.`)),
     );
     probe.once("listening", () => probe.close(() => resolve()));
     probe.listen(port, "127.0.0.1");

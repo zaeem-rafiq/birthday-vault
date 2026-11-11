@@ -45,7 +45,8 @@ cargo test --locked -p tests -- --test-threads=4
 
 # Web: lint, types, unit and property tests, the static build, then the end-to-end tests. The
 # end-to-end setup starts a local sandbox with the wasm built above (tests/examples/e2e_sandbox.rs).
-# Two runs at once would share web/out and the test port, so a second run waits for the first.
+# Two runs in this checkout would share web/out and the test port, so a second run waits for the
+# first. Other checkouts use their own port (web/e2e/port.ts).
 lock=target/.web-check.lock
 got=0
 for _ in $(seq 1 180); do
