@@ -4,7 +4,7 @@ Objective: finish PLAN.md by 14 Nov 2026 23:59 UTC. Gemma 4 runs locally through
 
 Tools live in ~/Documents/Projects/birthday-vault-gemma-test/tools. `arm.py` runs one Hermes session with a goal and gate, `guard.py` is the write guard, `set_goal.py` sets the goal, `watch_hermes.py` is the watch, and `hidden/` holds the independent scorer. Gemma server command is in the owner report. Hermes profile: gemmatesta.
 
-Phase 0 is done. Owner still owes: a named .near account from Meteor Wallet by the evening of 11 Nov. On 11 Nov the owner chose the real $5 gift on mainnet (PLAN Decisions). GO MAINNET, with the exact NEAR, is still asked at the Phase 4 STOP.
+Phase 0 is done. Owner still owes: a named .near account from Meteor Wallet by the evening of 11 Nov. On 11 Nov the owner chose the real $5 gift on mainnet (PLAN Decisions). GO MAINNET, with the exact NEAR, is still asked at the Phase 4 STOP. Owner mainnet account: `hugegrain4592.near` (Meteor Wallet), created 11 Nov; on 11 Nov it held 0 NEAR and 1 full-access key, and it needs at least 10 NEAR before the deploy.
 
 | Step | What | Who | State |
 |---|---|---|---|
