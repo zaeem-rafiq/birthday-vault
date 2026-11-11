@@ -64,6 +64,24 @@ async fn production_mint_validation() -> anyhow::Result<()> {
         .await?
         .into_result()?;
     let usdc = deploy_usdc(&root, root.id()).await?;
+    // T9: a mainnet id refuses a Production minimum under 24 h, a maximum over 40 years, and Demo
+    // mode. A failed init leaves the account uninitialized, so the good init below still runs.
+    for (mode, min, max, msg) in [
+        ("Production", DAY_NS - 1, MAX_LOCK_NS, "bad lock limits"),
+        ("Production", DAY_NS, MAX_LOCK_NS + 1, "bad lock limits"),
+        ("Demo", DAY_NS, MAX_LOCK_NS, "mode does not match network"),
+    ] {
+        let r = coll
+            .call("new")
+            .args_json(json!({ "usdc": usdc.id(), "mode": mode, "min_lock_ns": min.to_string(), "max_lock_ns": max.to_string() }))
+            .transact()
+            .await?;
+        assert!(
+            r.is_failure() && format!("{:?}", r.failures()).contains(msg),
+            "{mode} init with min {min}, max {max} on bv.near must fail with {msg:?}: {:?}",
+            r.failures()
+        );
+    }
     let r = coll.call("new").args_json(json!({ "usdc": usdc.id(), "mode": "Production", "min_lock_ns": DAY_NS.to_string(), "max_lock_ns": MAX_LOCK_NS.to_string() })).transact().await?;
     assert!(
         r.is_success(),

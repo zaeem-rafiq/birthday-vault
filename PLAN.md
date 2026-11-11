@@ -92,7 +92,7 @@ Run ./check before reporting any work as done.
 |---|---|---|
 | Time to the key moment | A signed-out visitor reaches the refused early withdrawal within 2 minutes of opening the site, before the 3-minute lock ends | Time the full flow on the live site before judging, signed out |
 | Full flow | A visitor finishes a transfer or a child claim within 6 minutes | Same timed run |
-| Demo supply | At the start of each judging day, the hub holds at least 39 testnet NEAR: enough for its cap of 100 demos at 0.39 NEAR each | `near account view-account-summary` on the hub, each morning |
+| Demo supply | At the start of each judging day, the hub holds at least 39 testnet NEAR: enough for its cap of 100 demos at 0.39 NEAR each. The tUSDC account holds at least 0.4 NEAR above its storage, because it pays about 0.00375 NEAR to register each demo's 3 accounts | `near account view-account-summary` on the hub and on tUSDC, each morning |
 | First screening | A fresh clone passes `./check` and follows the README with no help | The Phase 5 clean-clone helper |
 
 **Public name:** Birthday Vault. Never call it a bond, because a bond implies a guaranteed return and this earns nothing.
@@ -802,6 +802,8 @@ Have a fresh delegated helper clone the public repository into a temporary folde
 | 11 Nov | The site has no deposit-address, QR or status-polling code at all, only `dry: true` preview quotes | Real gifts are dropped (SKIP), so `NEXT_PUBLIC_REAL_GIFTS` is not needed. The e2e test proves no `dry: false` request is ever sent |
 | 11 Nov | The repository is MIT licensed | Section 9 Phase 3 asks for a LICENSE; MIT is the common choice for hackathon code and lets judges rebuild it |
 | 11 Nov | Disclose that the guardian can withdraw on the lock date, instead of changing the contract | Contract changes have been frozen since the 10 Nov cutoff, and the video promised the child the money |
+| 11 Nov | No Rust unit-test layer: every contract rule, including T9's Production rules, is tested in the sandbox, and T26 has no test of its own | near-sdk refuses a native build without its unit-testing feature. T9 runs on a `bv.near` id written into sandbox state. The sandbox cannot hold back global code distribution, so T26's refund path is covered by `mint_fails_cleanly_if_account_exists` |
+| 11 Nov | The morning demo-supply check also reads the tUSDC account | tUSDC pays for each demo's 3 registrations from its own balance. setup-hub.sh funded it for about 78 demos; it was topped up to 11.77 testnet NEAR on 11 Nov |
 | 9 Nov | The demo hub takes its time windows and limits at init: one hour, one day, 20 and 100 on testnet | Tests can then prove the rolling limits in seconds instead of hours. There is still no setter |
 | 9 Nov | T10 and the transfer and claim parts of T11 are tested in step S7, and T21 in the web phase | They need transfers and the claim. The contract returns no balances, so the page does the counting |
 | 11 Nov | The licence is MIT, copyright 2026 Zaeem Khan. The tag `pre-hackathon` points at the empty `init` commit `5a06c27` | The event accepts any licence and names MIT as fine. MIT also matches Deed and near-sdk-rs, which the code credits. The `init` commit holds no code, so every file in the repository counts as new work |
