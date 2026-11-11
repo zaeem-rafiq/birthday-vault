@@ -117,6 +117,8 @@ Run ./check before reporting any work as done.
 1. **Public page on testnet.** A no-login "Try an example" button with play money and a lock of minutes. A visitor mints a vault, sends a play gift, sees an early withdrawal refused, waits for the lock to end, then transfers the NFT or claims as the child. It also shows a live no-money 1Click quote.
 2. **One proof vault on mainnet.** It receives one real gift made by the owner. The public page reads its balance and shows transaction links.
 
+**Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. The public page has only the testnet surface.
+
 **Real gifts stay off the public site.** The public build sets `NEXT_PUBLIC_REAL_GIFTS=off`, which hides the control that requests a deposit address. The site is unaudited, so strangers must not be able to send real money through it. The owner uses a local build with the setting on.
 
 ---
@@ -606,7 +608,7 @@ Then run a full script: mint, play gift, wait, withdraw, and claim.
 
 ### Phase 3: Public page (Try flow by 11 Nov, link live by 12 Nov, 12:00 PM)
 
-Build `/` and `/vault`, then the Try flow, then `/gift`, `/limits` and `/proof` with its placeholder state. Pass every end-to-end test. Add a LICENSE. Add a row to `~/Documents/Projects/PROJECTS.md`.
+Build `/` and `/vault`, then the Try flow, then `/gift`, `/limits` and `/proof` with its placeholder state. **Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. Do not build `/proof`. Pass every end-to-end test. Add a LICENSE. Add a row to `~/Documents/Projects/PROJECTS.md`.
 
 Run gitleaks over the full history. Open a pull request.
 
@@ -625,6 +627,8 @@ Keep images small, since Render's free plan includes 5 GB of bandwidth per month
 After the site is live, open it signed out and run the whole flow.
 
 ### Phase 4: Real gift (OWNER ONLY, 11 to 13 Nov)
+
+**Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. Do none of Phase 4. It stays here only as a record.
 
 **Hermes prepares first, on 11 Nov:**
 
@@ -684,7 +688,7 @@ After the site is live, open it signed out and run the whole flow.
 
 Write `docs/demo-script.md` from section 10 and fill every `[N]` from the real run.
 
-- **Footage:** the owner's real-gift recording is the first 30 seconds. Hermes records testnet screens from the live site.
+- **Footage:** the owner's real-gift recording is the first 30 seconds. **Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. Use the opening for SKIP in section 10. Hermes records testnet screens from the live site.
 - **Voice:** OWNER ONLY, read the script into a QuickTime audio recording.
 - **Editing:** Hermes combines the footage and voice with ffmpeg, burns in captions, and makes a thumbnail showing the live result.
 - **Check:** a delegated helper reviews the video for any key, seed, email or private address.
@@ -714,6 +718,8 @@ Have a fresh delegated helper clone the public repository into a temporary folde
 ---
 
 ## 10. Demo script
+
+**Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. Use the opening for SKIP below the table. The 0:00 to 0:30 rows and the real-gift sentence in the last row do not apply.
 
 | Time | Spoken | Screen |
 |---|---|---|
