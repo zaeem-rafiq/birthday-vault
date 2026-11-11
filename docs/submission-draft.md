@@ -22,22 +22,20 @@ Open placeholders: `[LIVE LINK]`, `[REPO LINK]`, `[N]`. Fill them from the live 
 
 ## Description for the form
 
-Count: 1,886 characters with placeholders. Limit: 2,000. A real link is longer than `[LIVE LINK]`, so recount after filling it.
+Count: 1,922 characters with placeholders. Limit: 2,000. A real link is longer than `[LIVE LINK]`, so recount after filling it.
 
 ```text
 Live demo, no login: [LIVE LINK]. Birthday Vault is a crypto gift for a child. Relatives add to it from the wallet they already use. Nobody can open it until the child turns 18.
 
-The problem: about 11 percent of Illinois children, one in nine, were beneficiaries of a 529 college-savings plan over the past decade. Source: NBER, Nov 2025. Coinbase requires account holders to be at least 18. A child has nowhere simple to keep a gift.
+The problem: A relative who keeps dollars (USDC) in a crypto wallet has no simple way to set money aside for a child so that nobody can spend it before a chosen date. About 11 percent of Illinois children, one in nine, were 529 college-plan beneficiaries over the past decade. Source: NBER, Nov 2025. Coinbase requires account holders to be at least 18.
 
 The result: [N] seconds after a click on the demo page, the page mints a vault whose NEAR account has 0 access keys. Nobody holds a key, so only the contract can open it, and the contract checks the date.
 
 How NEAR makes it possible: each vault is one NEP-171 NFT tied to its own NEAR sub-account. The vault code is a global contract published once by hash, so every vault is cheap and its code cannot change. The collection has no admin key and no upgrade path. A relative's gift arrives as USDC through the NEAR Intents 1Click service, from the chain their dollars are already on. The page shows a live quote.
 
-One complete moment: a visitor mints a vault with a 3-minute lock and sends a play gift. The visitor tries to withdraw early, and the contract refuses. When the countdown ends, the visitor transfers the NFT. The contract refuses the old owner, and the new owner withdraws. If a guardian loses their key, the child account can claim the NFT after the lock date.
+One complete moment: a visitor mints a vault with a 3-minute lock and sends a play gift. The visitor tries to withdraw early, and the contract refuses. When the countdown ends, the visitor transfers the NFT. The contract refuses the old owner, and the new owner withdraws. If a guardian loses their key, the child account can claim the NFT.
 
-Tests attack the contracts: early withdrawal, a sale during a withdrawal, a hostile token, a failed mint and more.
-
-Limits: the public demo runs on NEAR's test network with play money, a 3-minute lock and a simulated gift. This entry delivered no real gift through NEAR Intents, and nothing is on mainnet. The balance earns nothing, so inflation reduces it. It works only while this contract and network last. USDC's issuer can freeze an account. Nobody has audited the code.
+Limits: the demo runs on NEAR's test network with play money, a 3-minute lock and a simulated gift. This entry delivered no real gift through NEAR Intents, and nothing is on mainnet. On the lock date the guardian (the parent who made the vault) still holds the NFT and can withdraw first. The balance earns nothing. It works only while this contract and network last. USDC's issuer can freeze an account. Nobody has audited the code.
 ```
 
 ## X post
@@ -55,7 +53,7 @@ Built at NEAR HACKATHON by @NEARProtocol #NEARHackathon
 
 In the video: a vault refuses an early withdrawal. Click to a vault with 0 account keys: [N] seconds. Each vault is an NFT with its own NEAR account that no one holds a key to. The contract checks the date.
 
-Gifts arrive as USDC through NEAR Intents, from any chain. Limits: test network, play money, simulated gift, unaudited, earns nothing.
+Gifts arrive as USDC through NEAR Intents, from any chain. Limits: test network, play money, simulated gift, unaudited, earns nothing, parents can withdraw first on the lock date.
 
 Try it, no login: [LIVE LINK]
 Code: [REPO LINK]
@@ -65,16 +63,16 @@ Would you trust a contract, not a person, to hold a gift for 18 years?
 
 ### Short version (under 280 characters, for a standard account)
 
-Count of the text below with each link counted as 23 characters: 276. Limit: 280.
+Count of the text below with each link counted as 23 characters: 278. Limit: 280.
 
 ```text
-Built at NEAR HACKATHON @NEARProtocol #NEARHackathon: Birthday Vault. A child's gift nobody can open until 18, not even the parents. Test network, play money. Try it: [LIVE LINK] Code: [REPO LINK] Would you trust a contract to hold a gift for 18 years?
+Built at NEAR HACKATHON @NEARProtocol #NEARHackathon: Birthday Vault. A child's gift nobody can touch before the date the parents choose. Test network, play money. Try it: [LIVE LINK] Code: [REPO LINK] Would you trust a contract with a gift for 18 years?
 ```
 
-Put the limits in a reply under the short version: "Limits: test network, play money, simulated gift, unaudited, earns nothing."
+Put the limits in a reply under the short version: "Limits: test network, play money, simulated gift, unaudited, earns nothing, parents can withdraw first on the lock date."
 
 ## Open decisions for the owner
 
 1. Does the owner's X account allow long posts? If not, use the short version plus a reply.
-2. Is "not even the parents" acceptable? It is true before the lock date: only the guardian and child accounts can receive the NFT, and nobody can withdraw. The guardian does hold the NFT, and after the date the holder can withdraw. Reply to keep, or to cut that phrase.
+2. I removed "not even the parents" from the short post, because the guardian can withdraw first on the lock date. The posts now say the guardian limit.
 3. Approve the question that ends the post, or give another.

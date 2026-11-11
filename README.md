@@ -10,7 +10,7 @@ Built at NEAR HACKATHON. Category: NFTs That Do Something.
 
 ## The problem and the result
 
-- **Problem:** about 11 percent of Illinois children, roughly one in nine, were beneficiaries of a 529 college-savings plan over the past decade. Source: [NBER Digest, November 2025](https://www.nber.org/index%2ephp/digest/202511/why-arent-college-savings-accounts-more-widely-used). Coinbase requires account holders to be at least 18. Source: [user agreement, clause 1.1](https://www.coinbase.com/legal/user_agreement/united_states). A child has no easy place to hold a gift.
+- **Problem:** A relative who keeps dollars (USDC) in a crypto wallet has no simple way to set money aside for a child so that nobody can spend it before a chosen date. Two facts show the gap: about 11 percent of Illinois children, roughly one in nine, were beneficiaries of a 529 college-savings plan over the past decade. Source: [NBER Digest, November 2025](https://www.nber.org/index%2ephp/digest/202511/why-arent-college-savings-accounts-more-widely-used). Coinbase requires account holders to be at least 18. Source: [user agreement, clause 1.1](https://www.coinbase.com/legal/user_agreement/united_states). A child has no easy place to hold a gift.
 - **Result:** [N] seconds from the "Try an example" click to a minted vault whose NEAR account has 0 access keys. Also, [N] sandbox tests pass. They include the attack tests listed in PLAN.md section 6.
 
 ## Screenshots
@@ -56,7 +56,7 @@ Steps assume the live page. Check each against the page before submitting.
 
 ## Limits
 
-The balance earns nothing, and inflation reduces it. The vault works only if this contract and this network last until the lock date. USDC's issuer can freeze an account. Nobody has audited the code. The public demo runs on NEAR's test network with play money and a 3-minute lock. The demo simulates the gift. This entry delivered no real gift through NEAR Intents, and I deployed nothing on mainnet. Nobody can correct a wrong child account. See `/limits` on the live page for the full text.
+The balance earns nothing, and inflation reduces it. The vault works only if this contract and this network last until the lock date. USDC's issuer can freeze an account. Nobody has audited the code. The public demo runs on NEAR's test network with play money and a 3-minute lock. The demo simulates the gift. This entry delivered no real gift through NEAR Intents, and I deployed nothing on mainnet. Nobody can correct a wrong child account. On the lock date, the guardian (the parent who made the vault) still holds the NFT and can withdraw everything first. The child can claim the NFT only while the guardian still holds it. See `/limits` on the live page for the full text.
 
 ## New code against baseline
 
