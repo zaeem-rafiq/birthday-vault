@@ -48,7 +48,7 @@ Before Gemma starts a step, Claude proves its checks against a hidden reference 
 - `scripts/deploy.sh testnet ... g1` printed DEPLOY CHECK PASS: standard nft_mint event, vault_info found, no keys on `bv-1`.
 - `scripts/play-flow.sh testnet g1...` printed PLAY FLOW PASS on `bv-2`: demo start, mint, play gift, early withdrawal refused with `locked`, guardian withdrawal, child claim, child withdrawal, vault empty, no keys on `bv-2`.
 - Found on testnet: a 0.1 NEAR guardian could not mint, because an account must hold about 0.001 NEAR per Tgas it attaches. Demo funding is now 0.15, 0.12 and 0.12 NEAR (PLAN Decisions). Each demo costs the hub 0.39 NEAR, so the hub's 1.5 NEAR covers about 3 demos; it needs testnet NEAR before judging.
-- The collection keeps its access key until the final public deployment, as the plan allows for testnet; `scripts/lock.sh` is still to write.
+- The collection keeps its access key until the final public deployment, as the plan allows for testnet; `scripts/lock.sh` was written on 11 Nov (see the final deployment section below).
 - The owner allowed Claude to run `scripts/setup-hub.sh`, `scripts/deploy.sh testnet` and `scripts/play-flow.sh testnet` (`.claude/settings.local.json`, 10 Nov).
 
 ## Final testnet deployment, 11 Nov

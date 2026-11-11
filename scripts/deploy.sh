@@ -79,4 +79,4 @@ KEYS=$(near account list-keys "bv-1.$COLL" network-config "$NET" now 2>&1)
 echo "$KEYS"
 if echo "$KEYS" | grep -qi "ed25519:"; then echo "FAIL: the test vault has an access key." >&2; exit 1; fi
 echo "DEPLOY CHECK PASS: $COLL is live on $NET with test vault bv-1.$COLL and no keys on the vault."
-echo "The collection still has its access key. Lock it with scripts/lock.sh $NET $COLL after the first real withdrawal."
+echo "The collection still has its access key. Lock it with scripts/lock.sh $NET $COLL once the play flow passes (scripts/play-flow.sh)."

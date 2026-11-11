@@ -22,11 +22,14 @@ esac
 case "$COLL" in *.testnet) ;; *) echo "Refused: $COLL is not a .testnet account." >&2; exit 1 ;; esac
 case "$DRY" in ""|--dry-run) ;; *) echo "Unknown option: $DRY" >&2; exit 1 ;; esac
 
-keys_of() { near account list-keys "$1" network-config "$NET" now 2>&1; }
+# Every read below tolerates a failed or empty answer, so that set -e never stops the script
+# silently, least of all after the key is deleted. The callers test what they got and say what failed.
+# list-keys prints an empty table for an account that does not exist, so an empty key list alone
+# proves nothing about existence. view-account-summary fails for a missing account.
+keys_of() { near account list-keys "$1" network-config "$NET" now 2>&1 || true; }
+summary() { near account view-account-summary "$1" network-config "$NET" now 2>&1 || true; }
 pubkeys() { grep -o 'ed25519:[1-9A-HJ-NP-Za-km-z]*' || true; }
-code_hash() {
-  near account view-account-summary "$COLL" network-config "$NET" now 2>&1 | grep "Local Contract" | awk '{print $NF}'
-}
+code_hash() { { summary "$COLL" | grep "Local Contract" | awk '{print $NF}'; } || true; }
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
 # 1. The collection has its code, its vault code is published, and the test vault is sound.
@@ -37,6 +40,11 @@ echo "$INFO" | grep -Eq '"vault_code_hash": "[0-9a-f]{64}"' || fail "$COLL has n
 VINFO=$(near contract call-function as-read-only "$COLL" vault_info json-args '{"token_id":"bv-1"}' network-config "$NET" now 2>&1) \
   || fail "vault_info did not answer."
 echo "$VINFO" | grep -q '"vault_id"' || fail "the test vault bv-1 does not exist on $COLL. Run deploy.sh first."
+# The vault account must exist on chain and run the published vault code.
+VCODE=$(echo "$INFO" | grep -o '"vault_code_hash": "[0-9a-f]*"' | grep -o '[0-9a-f]\{64\}')
+VSUM=$(summary "bv-1.$COLL")
+echo "$VSUM" | grep -q "Native account balance" || fail "the account bv-1.$COLL does not exist on $NET."
+echo "$VSUM" | grep "Global Contract" | grep -q "$VCODE" || fail "bv-1.$COLL does not run the vault code $VCODE."
 VKEYS=$(keys_of "bv-1.$COLL")
 echo "$VKEYS" | grep -q '^+---' || fail "could not read the key list of bv-1.$COLL."
 [ -z "$(echo "$VKEYS" | pubkeys)" ] || fail "the test vault bv-1.$COLL has an access key."
@@ -47,8 +55,9 @@ KEYS=$(keys_of "$COLL")
 echo "$KEYS" | grep -q '^+---' || fail "could not read the key list of $COLL."
 COUNT=$(echo "$KEYS" | pubkeys | wc -l | tr -d ' ')
 if [ "$COUNT" = 0 ]; then
-  echo "$COLL is already locked: 0 access keys."
-  echo "Code hash: $(code_hash)"
+  HASH=$(code_hash)
+  [ -n "$HASH" ] || fail "$COLL has no contract code on $NET."
+  echo "$COLL is already locked: 0 access keys. Code hash $HASH."
   exit 0
 fi
 [ "$COUNT" = 1 ] || fail "$COLL has $COUNT access keys, expected exactly 1. Delete nothing; check by hand."
@@ -65,7 +74,8 @@ for _ in $(seq 1 15); do
   sleep 2
 done
 echo "$AFTER"
+echo "$AFTER" | grep -q '^+---' || fail "the delete was sent, but the key list of $COLL could not be read afterwards. Check by hand: near account list-keys $COLL network-config $NET now"
 [ -z "$(echo "$AFTER" | pubkeys)" ] || fail "$COLL still has an access key."
 HASH=$(code_hash)
-[ -n "$HASH" ] || fail "could not read the code hash."
+[ -n "$HASH" ] || fail "the key is deleted, but the code hash of $COLL could not be read. Check by hand: near account view-account-summary $COLL network-config $NET now"
 echo "LOCK PASS: $COLL has 0 access keys on $NET. Code hash $HASH."
