@@ -15,6 +15,9 @@ gitleaks git -v --pre-commit --staged --no-banner --redact --log-level warn .
 gitleaks git -v --pre-commit --no-banner --redact --log-level warn .
 git ls-files --others --exclude-standard -z | xargs -0 -r -n1 gitleaks dir -v --no-banner --redact --log-level warn --
 
+# Syntax check of every shell script (bash -n runs nothing).
+for f in scripts/*.sh; do bash -n "$f"; done
+
 # Format and lint. Contracts are linted for wasm, because near-sdk refuses a native build.
 cargo fmt --all --check
 cargo clippy --locked -p tests --all-targets -- -D warnings
