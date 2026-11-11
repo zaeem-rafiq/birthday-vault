@@ -1,10 +1,10 @@
 #!/bin/bash
-# Runs every check for the contracts: the secret scan, format, lint, the wasm build of every
-# contract, unit tests and sandbox tests. Exits non-zero as soon as any check fails.
-# Phase 3 adds the feature map (scripts/check-features) and the web checks, because every
-# FEATURES.md row needs a web end-to-end test as its first proof.
+# Runs every check: the secret scan, the feature map, format and lint, the wasm build of every
+# contract, the sandbox tests, then the web lint, types, unit tests, build and end-to-end tests.
+# Exits non-zero as soon as any check fails.
 set -euo pipefail
 cd "$(dirname "$0")"
+export NEXT_TELEMETRY_DISABLED=1
 # shellcheck disable=SC1091
 source scripts/env.sh
 
@@ -14,6 +14,12 @@ gitleaks git -v --no-banner --redact --log-level warn .
 gitleaks git -v --pre-commit --staged --no-banner --redact --log-level warn .
 gitleaks git -v --pre-commit --no-banner --redact --log-level warn .
 git ls-files --others --exclude-standard -z | xargs -0 -r -n1 gitleaks dir -v --no-banner --redact --log-level warn --
+
+# Feature map: the checker first proves itself on fixtures, then asks Playwright and Vitest
+# which tests exist, and checks that every FEATURES.md row has a proof and every end-to-end test
+# has a row. It is told the one Playwright config that `npm run e2e` below runs.
+scripts/check-features --self-test
+scripts/check-features web/playwright.config.ts
 
 # Format and lint. Contracts are linted for wasm, because near-sdk refuses a native build.
 cargo fmt --all --check
@@ -36,4 +42,17 @@ done
 # no Rust unit tests: near-sdk refuses a native build without its unit-testing feature, so even
 # the Production rules (T9) are tested in the sandbox, on an id written into sandbox state.
 cargo test --locked -p tests -- --test-threads=4
+
+# Web: lint, types, unit and property tests, the static build, then the end-to-end tests. The
+# end-to-end setup starts a local sandbox with the wasm built above (tests/examples/e2e_sandbox.rs).
+# Two runs at once would share web/out and the test port, so a second run waits for the first.
+lock=target/.web-check.lock
+got=0
+for _ in $(seq 1 180); do
+  if mkdir "$lock" 2>/dev/null; then got=1; break; fi
+  sleep 5
+done
+[ "$got" = 1 ] || { echo "Another ./check held $lock for 15 minutes. Remove it if no ./check is running."; exit 1; }
+trap 'rmdir "$lock" 2>/dev/null || true' EXIT
+(cd web && npm run lint && npm run typecheck && npm test && npm run build && npm run e2e)
 echo "CHECK PASS"

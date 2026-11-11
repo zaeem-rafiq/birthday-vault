@@ -61,3 +61,9 @@ Before Gemma starts a step, Claude proves its checks against a hidden reference 
 - Hub refill: testnet faucet accounts `bv-faucet-a1109.testnet` and `bv-faucet-b1109.testnet` got 10 NEAR each (`near account create-account sponsor-by-faucet-service`). The hub received 9.0 NEAR and the funder 3.0 NEAR, which g2 needed because deploy.sh funds a collection with 3.30155 NEAR.
 - Hub `hub.birthday-vault-zr1109.testnet` read from RPC after the play flow: 11.1009 NEAR total, 1.32 NEAR locked for storage, about 9.8 NEAR spendable. At 0.39 NEAR per demo that covers about 25 demos.
 - Page ids for Phase 3: collection `g2.birthday-vault-zr1109.testnet`, hub and tUSDC unchanged.
+## Phase 3, 11 Nov afternoon
+
+- The web app is in `web/`: `/` (Try an example), `/vault/` (tree, balance, countdown, key count and the one action for the current state), `/gift/` (no-money 1Click preview quote) and `/limits/`. No `/proof` page, because the owner chose the simulated gift.
+- End-to-end tests run the real contracts on a local sandbox started by `tests/examples/e2e_sandbox.rs`; only 1Click is stubbed. `FEATURES.md` has 9 rows, each proved by an end-to-end test, and `./check` now runs the feature checker and the web checks.
+- Still to do for Phase 3: the final testnet collection id for the public build, the Render steps in `docs/owner-steps.md`, and the owner's PUBLISH.
+
