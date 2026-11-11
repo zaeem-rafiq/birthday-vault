@@ -138,11 +138,19 @@ export async function waitForFunding(d: Demo, timeoutMs = 60_000): Promise<boole
   return false;
 }
 
+/**
+ * The vault this demo's guardian minted for this demo's child, if any. A vault someone else
+ * transferred to the guardian does not count, so a retry never adopts a stranger's vault.
+ */
 async function guardianToken(d: Demo): Promise<string | undefined> {
   const tokens = await view<{ token_id: string }[]>(config.collectionId, "nft_tokens_for_owner", {
     account_id: d.keys.guardian.id,
   });
-  return tokens?.[tokens.length - 1]?.token_id;
+  for (const t of [...(tokens ?? [])].reverse()) {
+    const info = await view<VaultInfo | null>(config.collectionId, "vault_info", { token_id: t.token_id });
+    if (info && info.guardian === d.keys.guardian.id && info.child === d.keys.child.id) return t.token_id;
+  }
+  return undefined;
 }
 
 /** Step 4: the guardian mints a vault for the child with a short lock. Reuses one already made. */
