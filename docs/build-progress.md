@@ -50,3 +50,10 @@ Before Gemma starts a step, Claude proves its checks against a hidden reference 
 - Found on testnet: a 0.1 NEAR guardian could not mint, because an account must hold about 0.001 NEAR per Tgas it attaches. Demo funding is now 0.15, 0.12 and 0.12 NEAR (PLAN Decisions). Each demo costs the hub 0.39 NEAR, so the hub's 1.5 NEAR covers about 3 demos; it needs testnet NEAR before judging.
 - The collection keeps its access key until the final public deployment, as the plan allows for testnet; `scripts/lock.sh` is still to write.
 - The owner allowed Claude to run `scripts/setup-hub.sh`, `scripts/deploy.sh testnet` and `scripts/play-flow.sh testnet` (`.claude/settings.local.json`, 10 Nov).
+
+## Phase 3, 11 Nov afternoon
+
+- The web app is in `web/`: `/` (Try an example), `/vault/` (tree, balance, countdown, key count and the one action for the current state), `/gift/` (no-money 1Click preview quote) and `/limits/`. No `/proof` page, because the owner chose the simulated gift.
+- End-to-end tests run the real contracts on a local sandbox started by `tests/examples/e2e_sandbox.rs`; only 1Click is stubbed. `FEATURES.md` has 9 rows, each proved by an end-to-end test, and `./check` now runs the feature checker and the web checks.
+- Still to do for Phase 3: the final testnet collection id for the public build, the Render steps in `docs/owner-steps.md`, and the owner's PUBLISH.
+

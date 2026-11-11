@@ -6,3 +6,6 @@ web/.next
 .keys/
 docs/footage/
 .state/
+web/test-results/
+web/playwright-report/
+web/tsconfig.tsbuildinfo
