@@ -46,8 +46,19 @@ export default function Home() {
     e.preventDefault();
     if (!nicknameOk || busy) return;
     setError("");
+    try {
+      await run();
+    } catch {
+      setPhase("error");
+      setError("Something went wrong on the test network. Press Try an example again to continue.");
+    }
+  }
+
+  async function run() {
     // Resume a demo this browser already started, so a retry never spends a second hub start.
-    let d = saved && !saved.vaultId && saved.nickname === nickname.trim() ? saved : newDemo(nickname);
+    // Read it now, not at page load: an earlier attempt in this visit may have saved it.
+    const current = loadDemo();
+    let d = current && !current.vaultId && current.nickname === nickname.trim() ? current : newDemo(nickname);
     saveDemo(d);
     if (!d.started) {
       setPhase("starting");

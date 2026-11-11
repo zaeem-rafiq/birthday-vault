@@ -13,8 +13,10 @@ let provider: FailoverRpcProvider | null = null;
 
 export function demoProvider(): FailoverRpcProvider {
   if (!provider) {
+    // near-api-js retries a failed request 12 times by default, about two minutes per address,
+    // so a page would look frozen. Three quick retries (about 3.5 s), then the next address.
     provider = new FailoverRpcProvider(
-      config.rpcUrls.map((url) => new JsonRpcProvider({ url })),
+      config.rpcUrls.map((url) => new JsonRpcProvider({ url }, { retries: 3, wait: 500, backoff: 2 })),
     );
   }
   return provider;
@@ -128,16 +130,16 @@ export function errorText(e: unknown): string {
   const m = all.match(/Smart contract panicked: ([^"\\]+)/);
   if (m) return m[1].trim();
   if (/not enough balance/i.test(all)) return "Not enough balance";
+  // A failover error only says "Exceeded N providers"; the real cause is the last inner error.
+  const inner = (e as { errors?: unknown[] } | null)?.errors;
+  if (Array.isArray(inner) && inner.length) return errorText(inner[inner.length - 1]);
   return messages(e)[0] ?? "Unknown error";
 }
 
+/** The play-USDC balance. Throws when the network cannot be read, so callers never act on a guess. */
 export async function ftBalance(accountId: string): Promise<bigint> {
-  try {
-    const v = await view<string>(config.usdcId, "ft_balance_of", { account_id: accountId });
-    return BigInt(v || "0");
-  } catch {
-    return BigInt(0);
-  }
+  const v = await view<string>(config.usdcId, "ft_balance_of", { account_id: accountId });
+  return BigInt(v || "0");
 }
 
 export async function accountExists(accountId: string): Promise<boolean> {

@@ -20,6 +20,11 @@ describe("1Click preview quotes", () => {
     );
   });
 
+  it("never uses a testnet stand-in recipient, whatever the build setting says", () => {
+    expect(quoteRecipient("bv-1.bv.test.near", "someone.testnet")).toBe("wrap.near");
+    expect(quoteRecipient("bv-1.bv.test.near", "relay.near")).toBe("relay.near");
+  });
+
   it("names a mainnet vault as itself", () => {
     expect(quoteRecipient("bv-1.g1.alice.near")).toBe("bv-1.g1.alice.near");
   });

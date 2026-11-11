@@ -26,8 +26,10 @@ export function validRefund(chain: Chain, address: string): string | null {
  * The recipient a quote may name. A demo (testnet) vault id must never reach 1Click, so demo
  * vaults use the preview recipient, an existing mainnet account. Only a mainnet id is itself.
  */
-export function quoteRecipient(vaultId: string): string {
-  return isMainnetId(vaultId) ? vaultId : config.quotePreviewRecipient;
+export function quoteRecipient(vaultId: string, preview = config.quotePreviewRecipient): string {
+  if (isMainnetId(vaultId)) return vaultId;
+  // The stand-in must itself be a mainnet account, whatever the build setting says.
+  return isMainnetId(preview) ? preview : "wrap.near";
 }
 
 export type QuoteBody = {

@@ -78,6 +78,7 @@ export default async function globalSetup() {
   });
   const server = await startServer();
   process.env.E2E_COLLECTION_ID = env.NEXT_PUBLIC_COLLECTION_ID;
+  process.env.E2E_RPC_URL = env.NEXT_PUBLIC_DEMO_RPC_URLS;
   return async () => {
     server.kill();
     proc.removeAllListeners("exit");
