@@ -179,7 +179,7 @@ birthday-vault/
   contracts/hostile-token/    test double only, never deployed
   tests/                      near-workspaces sandbox tests, a workspace member
   web/                        Next.js static site
-  scripts/                    deploy.sh, mainnet.sh, setup-hub.sh, local-real-gift.sh, check-features
+  scripts/                    deploy.sh, lock.sh, setup-hub.sh, play-flow.sh, check-features
   docs/  misses.md  threat-model.md  proof.md  demo-script.md  owner-steps.md  sources/  footage/ (gitignored)
 ```
 
@@ -595,7 +595,7 @@ Write `scripts/deploy.sh <network> <funder> <collection-name>`. It uses only the
 8. Delete the collection's only access key with `near account delete-keys`, only after step 7 succeeds.
 9. Confirm `near account list-keys` is empty for the collection. Print the code hash.
 
-A collection with no keys cannot be redeployed. Use a new name (`g1`, `g2`) for each deployment. Testnet demo collections do not need step 8 until the final public deployment. On mainnet, the script stops after step 7, and step 8 runs later through `mainnet.sh lock`. The first real Production mint happens on mainnet while the key still exists. `deploy.sh` refuses `mainnet` unless `mainnet.sh` called it with `OWNER_RUN=1` and the typed word. **Superseded on 11 Nov:** after SKIP there is no `mainnet.sh`, and `deploy.sh` refuses `mainnet` unless the option is `--dry-run` (see section 13).
+A collection with no keys cannot be redeployed. Use a new name (`g1`, `g2`) for each deployment. Testnet demo collections do not need step 8 until the final public deployment. Step 8 runs separately, through `scripts/lock.sh` (testnet only). `deploy.sh` refuses `mainnet` unless the option is `--dry-run`, which signs nothing.
 
 Write `scripts/setup-hub.sh`. It deploys tUSDC and the hub, generates the key pool, adds each key with `near account add-key ... grant-function-call-access`, and writes the pool to gitignored `.env.render.local`.
 
@@ -628,61 +628,9 @@ After the site is live, open it signed out and run the whole flow.
 
 ### Phase 4: Real gift (OWNER ONLY, 11 to 13 Nov)
 
-**Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. Do none of Phase 4. It stays here only as a record.
+**Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. Do none of Phase 4.
 
-**Hermes prepares first, on 11 Nov:**
-
-1. Run the complete `deploy.sh` on testnet, including key deletion.
-2. Write `scripts/mainnet.sh <command> <your-account>.near`, which runs the same steps with collection name `g1`.
-   - Commands: `deploy`, `lock`, `mint-proof`, `withdraw <vault-id>`.
-   - It exits unless `OWNER_RUN=1` is set, except for `--dry-run`.
-   - It requires a typed word before spending: `DEPLOY`, `LOCK`, `MINT` or `WITHDRAW`.
-   - `deploy` also creates `example-child.<your-account>.near` with 0.01 NEAR, skips that if it already exists, and mints a vault titled `Example rehearsal` with a lock of 24 hours plus 15 minutes.
-   - The signing account is the guardian of every vault.
-   - `withdraw` first checks `storage_balance_of` for the receiver on the USDC contract, registers it for 0.00125 NEAR if needed, and prints the amount.
-   - It writes the collection id and vault ids to gitignored `.state/mainnet.json`. These are public ids, so Hermes may read this file.
-3. Write `scripts/local-real-gift.sh <vault-id>`, which builds the site with real gifts on, serves it on port 4174, and prints the gift link for that vault.
-4. Read the 1Click terms at `docs.near-intents.org/security-compliance/terms-of-service.md`. Report any limit on US users, public front ends or quoting.
-5. Put the exact owner commands, tested on testnet where possible, in `docs/owner-steps.md`. MyNearWallet no longer creates accounts or signs (checked 9 Nov 2026), so the owner uses Meteor Wallet. Use `near account import-account using-seed-phrase`, which the owner types only in their own Terminal.
-
-**STOP by the evening of 11 Nov. Tell the owner the exact NEAR that will be spent, from the measured wasm sizes. Then ask:**
-
-> Reply GO MAINNET to approve spending about X NEAR, which cannot be recovered, plus up to $8 of USDC and a small amount of Base gas. Reply SKIP to use a labelled simulated gift.
-
-**Warning for the owner:** the proof page, `docs/proof.md`, the video and the post will show your mainnet account and your Base address publicly and permanently. Use wallets you are willing to expose. A deployment with no keys cannot be undone.
-
-**Owner steps after GO MAINNET**
-
-1. Confirm your named NEAR account holds at least 10 NEAR.
-2. Confirm a Base wallet holds at least $8 of USDC and about $2 of ETH for gas. Do not pay from an exchange account.
-3. Open Terminal and go to the project folder.
-4. Run the import command in `docs/owner-steps.md`. It is done when the Terminal says the key was saved. Never type your seed phrase into Hermes.
-5. Run `./scripts/mainnet.sh deploy <your-account>.near --dry-run`. Read the NEAR total.
-6. By 12:00 PM on 12 Nov, run `OWNER_RUN=1 ./scripts/mainnet.sh deploy <your-account>.near`. Type `DEPLOY`. It is done when it prints the rehearsal vault id.
-7. Run `./scripts/local-real-gift.sh <rehearsal-vault-id>`.
-8. Open the printed link and enter $1. Send only USDC on Base, to the exact address, in the exact amount, within 30 minutes.
-9. Wait for `Gift delivered`. If the page shows `REFUNDED` or `FAILED`, stop and tell Hermes. Do not try $5.
-10. After 24 hours and 15 minutes, run `OWNER_RUN=1 ./scripts/mainnet.sh withdraw <rehearsal-vault-id>`. Type `WITHDRAW`. It is done when it prints a transaction link and your USDC balance on NEAR rises.
-11. Run `OWNER_RUN=1 ./scripts/mainnet.sh lock <your-account>.near`. Type `LOCK`. It is done when it prints `Collection access keys: 0`.
-12. Run `OWNER_RUN=1 ./scripts/mainnet.sh mint-proof <your-account>.near`. Type `MINT`. It creates a vault titled `Example vault` with a 30-day lock and prints its id.
-13. Run `./scripts/local-real-gift.sh <proof-vault-id>`.
-14. Start a screen recording with QuickTime. Show your Base wallet and the gift page. Hide seed words, email and other accounts.
-15. Send the $5 gift, following step 8.
-16. Stop recording when the page shows `Gift delivered`. Save it as `docs/footage/real-gift-5usd.mov`.
-17. Tell Hermes the time you sent it, the time it was delivered, and the two explorer links.
-18. On the date 30 days after step 12, run `OWNER_RUN=1 ./scripts/mainnet.sh withdraw <proof-vault-id>`. Type `WITHDRAW`. Keep your account key until then.
-
-**If step 10 is not done by 4:00 PM on 13 Nov, Hermes asks:**
-
-> The real withdrawal is not proven yet. Reply SEND to lock the collection and send the $5 now, which films on time but means the $5 depends on an untested withdrawal. Reply WAIT to delay filming. I recommend SEND, because the amount is small.
-
-**What is spent:** Up to about 6 NEAR for storage and code cannot be recovered, because the collection ends with no keys. That is about $21 at today's price. Mints and gas cost about 0.1 NEAR more. Your remaining NEAR stays in your account. USDC returns only through the withdrawals in steps 10 and 18, less small fees.
-
-**Never use a real child's name** as a vault title or nickname.
-
-**Hermes then:** reads `.state/mainnet.json`. Adds to `docs/proof.md` and `web/public/proof.json`: deployment hash, access key lists for the collection and the proof vault, code hash, gift transactions, correlation ids, and amount received. Lists the new Render settings for the owner, and opens a pull request. Every merge needs the owner's approval.
-
-**If the owner replies SKIP:** In one commit, remove `/proof`, its `FEATURES.md` row and its end-to-end test, with a note in the commit message. Use the alternative opening in section 10.
+**Dropped on 11 Nov.** The owner replied SKIP (see section 13), so nothing is deployed on mainnet and the video uses the simulated-gift opening in section 10. `scripts/mainnet.sh`, `scripts/local-real-gift.sh` and the `/proof` page are not built. `scripts/deploy.sh` signs nothing on mainnet: it accepts `mainnet` only with `--dry-run`, and the dry run is the price check. A real mainnet deploy would need a new script and a new owner decision.
 
 ### Phase 5: Video, README and post (13 Nov)
 
