@@ -2,9 +2,9 @@
 # Deploys one Birthday Vault collection. Plan section 9, Phase 2.
 #   scripts/deploy.sh <testnet|mainnet> <funder> <collection-name> [--dry-run]
 # Uses only the near CLI, so signing keys stay in the macOS keychain. --dry-run builds,
-# prints sizes and costs, and signs nothing. Mainnet is refused unless scripts/mainnet.sh
-# runs it for the owner with OWNER_RUN=1. On testnet, scripts/setup-hub.sh must run first,
-# because the collection uses tusdc.<funder> as its USDC.
+# prints sizes and costs, and signs nothing. Mainnet is refused unless the option is --dry-run.
+# On testnet, scripts/setup-hub.sh must run first, because the collection uses tusdc.<funder>
+# as its USDC.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
@@ -14,14 +14,15 @@ NET=${1:?usage: deploy.sh <testnet|mainnet> <funder> <collection-name> [--dry-ru
 FUNDER=${2:?funder account}
 NAME=${3:?collection name, for example g1}
 DRY=${4:-}
+case "$DRY" in ""|--dry-run) ;; *) echo "Unknown option: $DRY" >&2; exit 1 ;; esac
 case "$NET" in
   testnet)
     MODE=Demo; MIN_NS=30000000000; MAX_NS=3600000000000; USDC="tusdc.$FUNDER" ;;
   mainnet)
     MODE=Production; MIN_NS=86400000000000; MAX_NS=1262304000000000000
     USDC=17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1
-    if [ "$DRY" != "--dry-run" ] && [ "${OWNER_RUN:-}" != 1 ]; then
-      echo "Refused: a mainnet deploy runs only through scripts/mainnet.sh, by the owner." >&2
+    if [ "$DRY" != "--dry-run" ]; then
+      echo "Refused: this script signs nothing on mainnet. Only --dry-run runs there." >&2
       exit 1
     fi ;;
   *) echo "The network must be testnet or mainnet." >&2; exit 1 ;;
@@ -71,12 +72,21 @@ UNLOCK=$(python3 -I -c "import time; print(time.time_ns() + $MIN_NS + 120_000_00
 send contract call-function as-transaction "$COLL" mint_vault \
   json-args "{\"child_id\":\"deploy-check-child.$FUNDER\",\"unlock_ns\":\"$UNLOCK\",\"title\":\"Deploy check\"}" \
   prepaid-gas '100 Tgas' attached-deposit '0.025 NEAR' sign-as "$FUNDER"
-view contract_info '{}'
+CINFO=$(view contract_info '{}')
+echo "$CINFO"
 INFO=$(view vault_info '{"token_id":"bv-1"}' 2>&1)
 echo "$INFO"
 echo "$INFO" | grep -q "\"vault_id\"" || { echo "FAIL: the test vault has no vault_info." >&2; exit 1; }
-KEYS=$(near account list-keys "bv-1.$COLL" network-config "$NET" now 2>&1)
+# list-keys prints an empty table for an account that does not exist, so also require that the
+# vault account exists and runs the published vault code (the same check as scripts/lock.sh).
+VCODE=$(echo "$CINFO" | grep -o '"vault_code_hash": "[0-9a-f]*"' | grep -o '[0-9a-f]\{64\}') \
+  || { echo "FAIL: the collection has no vault code hash." >&2; exit 1; }
+VSUM=$(near account view-account-summary "bv-1.$COLL" network-config "$NET" now 2>&1 || true)
+echo "$VSUM" | grep -q "Native account balance" || { echo "FAIL: the account bv-1.$COLL does not exist on $NET." >&2; exit 1; }
+echo "$VSUM" | grep "Global Contract" | grep -q "$VCODE" || { echo "FAIL: bv-1.$COLL does not run the vault code $VCODE." >&2; exit 1; }
+KEYS=$(near account list-keys "bv-1.$COLL" network-config "$NET" now 2>&1 || true)
 echo "$KEYS"
+echo "$KEYS" | grep -q '^+---' || { echo "FAIL: could not read the key list of bv-1.$COLL." >&2; exit 1; }
 if echo "$KEYS" | grep -qi "ed25519:"; then echo "FAIL: the test vault has an access key." >&2; exit 1; fi
 echo "DEPLOY CHECK PASS: $COLL is live on $NET with test vault bv-1.$COLL and no keys on the vault."
-echo "The collection still has its access key. Lock it with scripts/lock.sh $NET $COLL after the first real withdrawal."
+echo "The collection still has its access key. Lock it with scripts/lock.sh $NET $COLL once the play flow passes (scripts/play-flow.sh)."

@@ -1,7 +1,7 @@
 # Runs ./check on GitHub for every push to main and every pull request.
 # The job id "check" is the status that branch protection on main requires.
 # Versions checked on 9 Nov 2026: actions/checkout v7.0.1, actions/cache v6.1.0,
-# cargo-near 0.23.0. Rust comes from rust-toolchain.toml. near-workspaces downloads the
+# cargo-near 0.23.0; actions/setup-node v7.1.0 on 11 Nov 2026. Rust comes from rust-toolchain.toml. near-workspaces downloads the
 # sandbox it needs, because scripts/env.sh sets NEAR_SANDBOX_BIN_PATH only on the Mac.
 name: check
 
@@ -35,6 +35,16 @@ jobs:
           mkdir -p /tmp/cargo-near && tar -xzf /tmp/cargo-near.tar.gz -C /tmp/cargo-near
           find /tmp/cargo-near -type f -name cargo-near -exec install {} "$HOME/.cargo/bin/" \;
           cargo near --version
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install web dependencies and the Playwright browser
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
       - uses: actions/cache@v6
         with:
           path: |

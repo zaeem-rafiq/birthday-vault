@@ -12,6 +12,7 @@ source scripts/env.sh
 
 FUNDER=${1:?usage: setup-hub.sh <funder.testnet> [--dry-run | --redeploy-code]}
 DRY=${2:-}
+case "$DRY" in ""|--dry-run|--redeploy-code) ;; *) echo "Unknown option: $DRY" >&2; exit 1 ;; esac
 case "$FUNDER" in *.testnet) ;; *) echo "Refused: the demo hub is testnet only." >&2; exit 1 ;; esac
 NET=testnet
 TUSDC="tusdc.$FUNDER"
@@ -27,7 +28,9 @@ TW=target/near/tusdc/tusdc.wasm
 HW=target/near/demo_hub/demo_hub.wasm
 TB=$(wc -c < "$TW" | tr -d ' ')
 HB=$(wc -c < "$HW" | tr -d ' ')
-TF=$(python3 -I -c "print(f'{$TB * 0.00001 + 0.3:.5f}')")
+# tUSDC pays the storage of the 3 accounts each demo registers (about 0.00375 NEAR each), for the
+# hub's cap of 100 demos a day over 3 judging days.
+TF=$(python3 -I -c "print(f'{$TB * 0.00001 + 0.3 + 0.00375 * 100 * 3:.5f}')")
 HF=$(python3 -I -c "print(f'{$HB * 0.00001 + 0.3 + $DEMO_FUNDS:.5f}')")
 echo "tUSDC $TUSDC: $TB bytes, funded with $TF NEAR"
 echo "Hub $HUB: $HB bytes, funded with $HF NEAR, of which $DEMO_FUNDS NEAR pays for about $(python3 -I -c "print(int($DEMO_FUNDS / 0.39))") demos at 0.39 NEAR each"

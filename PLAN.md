@@ -74,6 +74,27 @@ Run ./check before reporting any work as done.
 
 **One sentence:** A crypto gift for a child that relatives can add to from the wallet they already use, and nobody can open until the child turns 18.
 
+**Problem:** A relative who keeps dollars (USDC) in a crypto wallet has no simple way to set money aside for a child so that nobody can spend it before a chosen date. If they send it to a parent's wallet, the parent can spend it at once. If their dollars are on another chain, sending them to NEAR normally takes a bridge and a NEAR account.
+
+**Who it is for**
+
+| Person | Who they are |
+|---|---|
+| Guardian | A parent with a NEAR account who creates the vault and names the child's NEAR account. |
+| Relative | Someone who already holds USDC on Base, Arbitrum, Ethereum or Solana in a self-custody wallet, not on an exchange. They get a link from the guardian. |
+| Judge | A hackathon judge, signed out, who tries the play-money demo on testnet. This is the person the build serves first. |
+
+**Why this works now:** Two things checked on 9 Nov make it possible without a server. The 1Click API accepts calls from a browser with no key, so a gift page can quote any of the four chains directly (section 3). NEAR global contracts let every vault share one copy of its code by hash, so a vault needs only 0.0025 NEAR of funding instead of its own contract deployment (section 5). The plan does not claim either feature is new.
+
+**Success on judging days (16 to 18 Nov)**
+
+| Measure | Target | How it is checked |
+|---|---|---|
+| Time to the key moment | A signed-out visitor reaches the refused early withdrawal within 2 minutes of opening the site, before the 3-minute lock ends | Time the full flow on the live site before judging, signed out |
+| Full flow | A visitor finishes a transfer or a child claim within 6 minutes | Same timed run |
+| Demo supply | At the start of each judging day, the hub holds at least 39 testnet NEAR: enough for its cap of 100 demos at 0.39 NEAR each. The tUSDC account holds at least 0.4 NEAR above its storage, because it pays about 0.00375 NEAR to register each demo's 3 accounts | `near account view-account-summary` on the hub and on tUSDC, each morning |
+| First screening | A fresh clone passes `./check` and follows the README with no help | The Phase 5 clean-clone helper |
+
 **Public name:** Birthday Vault. Never call it a bond, because a bond implies a guaranteed return and this earns nothing.
 
 **Rules of the product**
@@ -85,7 +106,8 @@ Run ./check before reporting any work as done.
 | Gifts | A relative pays USDC from another chain through the NEAR Intents 1Click API. |
 | Before the lock date | Nobody can withdraw. The NFT moves only between the guardian and the child account named at mint. |
 | After the lock date | The NFT is transferable. Whoever holds it can withdraw. |
-| Lost guardian key | After the lock date, the child account can claim the NFT while the guardian still holds it. |
+| Who gets the money at the lock date | The guardian minted the vault, so the guardian still holds the NFT on that date and can withdraw everything. The child gets the money only if the guardian sends the NFT to the child, or the child claims it first. The limits page and the video say this plainly. |
+| Child claim | After the lock date, the child account can claim the NFT at any time while the guardian still holds it. This works whether or not the guardian still has their key. If the guardian withdraws first, the money is gone before the child claims. Whoever acts first wins. |
 | Privacy | Pages ask for a nickname only, because everything on the network is public. |
 
 **Out of scope:** interest or yield, marketplace listings and approvals, `nft_transfer_call`, a wallet-connect login, price charts, any admin or upgrade path, a real token sale, and native ETH, SOL or BTC gifts.
@@ -94,6 +116,8 @@ Run ./check before reporting any work as done.
 
 1. **Public page on testnet.** A no-login "Try an example" button with play money and a lock of minutes. A visitor mints a vault, sends a play gift, sees an early withdrawal refused, waits for the lock to end, then transfers the NFT or claims as the child. It also shows a live no-money 1Click quote.
 2. **One proof vault on mainnet.** It receives one real gift made by the owner. The public page reads its balance and shows transaction links.
+
+**Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. The public page has only the testnet surface.
 
 **Real gifts stay off the public site.** The public build sets `NEXT_PUBLIC_REAL_GIFTS=off`, which hides the control that requests a deposit address. The site is unaudited, so strangers must not be able to send real money through it. The owner uses a local build with the setting on.
 
@@ -155,7 +179,7 @@ birthday-vault/
   contracts/hostile-token/    test double only, never deployed
   tests/                      near-workspaces sandbox tests, a workspace member
   web/                        Next.js static site
-  scripts/                    deploy.sh, mainnet.sh, setup-hub.sh, local-real-gift.sh, check-features
+  scripts/                    deploy.sh, lock.sh, setup-hub.sh, play-flow.sh, check-features
   docs/  misses.md  threat-model.md  proof.md  demo-script.md  owner-steps.md  sources/  footage/ (gitignored)
 ```
 
@@ -498,7 +522,7 @@ The docs disagree about deposits made after the deadline, so warn the sender not
 
 **Design:** Before styling, look at two or three products known for clear, warm first screens. One idea per screen and one main button. Make it readable from a step back. Check 375 px width and keyboard focus.
 
-**Limits page must say:** the balance earns nothing and inflation reduces it. The vault depends on this contract and this network lasting until the lock date. USDC's issuer can freeze an account. The code is unaudited. The public demo uses play money and shortened timers. A wrong child account cannot be corrected.
+**Limits page must say:** the balance earns nothing and inflation reduces it. The vault depends on this contract and this network lasting until the lock date. USDC's issuer can freeze an account. The code is unaudited. The public demo uses play money and shortened timers. A wrong child account cannot be corrected. On the lock date the guardian still holds the vault and can withdraw everything. The child gets it only if the guardian hands it over, or the child claims it first.
 
 ---
 
@@ -571,7 +595,7 @@ Write `scripts/deploy.sh <network> <funder> <collection-name>`. It uses only the
 8. Delete the collection's only access key with `near account delete-keys`, only after step 7 succeeds.
 9. Confirm `near account list-keys` is empty for the collection. Print the code hash.
 
-A collection with no keys cannot be redeployed. Use a new name (`g1`, `g2`) for each deployment. Testnet demo collections do not need step 8 until the final public deployment. On mainnet, the script stops after step 7, and step 8 runs later through `mainnet.sh lock`. The first real Production mint happens on mainnet while the key still exists. `deploy.sh` refuses `mainnet` unless `mainnet.sh` called it with `OWNER_RUN=1` and the typed word.
+A collection with no keys cannot be redeployed. Use a new name (`g1`, `g2`) for each deployment. Testnet demo collections do not need step 8 until the final public deployment. Step 8 runs separately, through `scripts/lock.sh` (testnet only). `deploy.sh` refuses `mainnet` unless the option is `--dry-run`, which signs nothing.
 
 Write `scripts/setup-hub.sh`. It deploys tUSDC and the hub, generates the key pool, adds each key with `near account add-key ... grant-function-call-access`, and writes the pool to gitignored `.env.render.local`.
 
@@ -584,7 +608,7 @@ Then run a full script: mint, play gift, wait, withdraw, and claim.
 
 ### Phase 3: Public page (Try flow by 11 Nov, link live by 12 Nov, 12:00 PM)
 
-Build `/` and `/vault`, then the Try flow, then `/gift`, `/limits` and `/proof` with its placeholder state. Pass every end-to-end test. Add a LICENSE. Add a row to `~/Documents/Projects/PROJECTS.md`.
+Build `/` and `/vault`, then the Try flow, then `/gift`, `/limits` and `/proof` with its placeholder state. **Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. Do not build `/proof`. Pass every end-to-end test. Add a LICENSE. Add a row to `~/Documents/Projects/PROJECTS.md`.
 
 Run gitleaks over the full history. Open a pull request.
 
@@ -604,65 +628,15 @@ After the site is live, open it signed out and run the whole flow.
 
 ### Phase 4: Real gift (OWNER ONLY, 11 to 13 Nov)
 
-**Hermes prepares first, on 11 Nov:**
+**Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. Do none of Phase 4.
 
-1. Run the complete `deploy.sh` on testnet, including key deletion.
-2. Write `scripts/mainnet.sh <command> <your-account>.near`, which runs the same steps with collection name `g1`.
-   - Commands: `deploy`, `lock`, `mint-proof`, `withdraw <vault-id>`.
-   - It exits unless `OWNER_RUN=1` is set, except for `--dry-run`.
-   - It requires a typed word before spending: `DEPLOY`, `LOCK`, `MINT` or `WITHDRAW`.
-   - `deploy` also creates `example-child.<your-account>.near` with 0.01 NEAR, skips that if it already exists, and mints a vault titled `Example rehearsal` with a lock of 24 hours plus 15 minutes.
-   - The signing account is the guardian of every vault.
-   - `withdraw` first checks `storage_balance_of` for the receiver on the USDC contract, registers it for 0.00125 NEAR if needed, and prints the amount.
-   - It writes the collection id and vault ids to gitignored `.state/mainnet.json`. These are public ids, so Hermes may read this file.
-3. Write `scripts/local-real-gift.sh <vault-id>`, which builds the site with real gifts on, serves it on port 4174, and prints the gift link for that vault.
-4. Read the 1Click terms at `docs.near-intents.org/security-compliance/terms-of-service.md`. Report any limit on US users, public front ends or quoting.
-5. Put the exact owner commands, tested on testnet where possible, in `docs/owner-steps.md`. MyNearWallet no longer creates accounts or signs (checked 9 Nov 2026), so the owner uses Meteor Wallet. Use `near account import-account using-seed-phrase`, which the owner types only in their own Terminal.
-
-**STOP by the evening of 11 Nov. Tell the owner the exact NEAR that will be spent, from the measured wasm sizes. Then ask:**
-
-> Reply GO MAINNET to approve spending about X NEAR, which cannot be recovered, plus up to $8 of USDC and a small amount of Base gas. Reply SKIP to use a labelled simulated gift.
-
-**Warning for the owner:** the proof page, `docs/proof.md`, the video and the post will show your mainnet account and your Base address publicly and permanently. Use wallets you are willing to expose. A deployment with no keys cannot be undone.
-
-**Owner steps after GO MAINNET**
-
-1. Confirm your named NEAR account holds at least 10 NEAR.
-2. Confirm a Base wallet holds at least $8 of USDC and about $2 of ETH for gas. Do not pay from an exchange account.
-3. Open Terminal and go to the project folder.
-4. Run the import command in `docs/owner-steps.md`. It is done when the Terminal says the key was saved. Never type your seed phrase into Hermes.
-5. Run `./scripts/mainnet.sh deploy <your-account>.near --dry-run`. Read the NEAR total.
-6. By 12:00 PM on 12 Nov, run `OWNER_RUN=1 ./scripts/mainnet.sh deploy <your-account>.near`. Type `DEPLOY`. It is done when it prints the rehearsal vault id.
-7. Run `./scripts/local-real-gift.sh <rehearsal-vault-id>`.
-8. Open the printed link and enter $1. Send only USDC on Base, to the exact address, in the exact amount, within 30 minutes.
-9. Wait for `Gift delivered`. If the page shows `REFUNDED` or `FAILED`, stop and tell Hermes. Do not try $5.
-10. After 24 hours and 15 minutes, run `OWNER_RUN=1 ./scripts/mainnet.sh withdraw <rehearsal-vault-id>`. Type `WITHDRAW`. It is done when it prints a transaction link and your USDC balance on NEAR rises.
-11. Run `OWNER_RUN=1 ./scripts/mainnet.sh lock <your-account>.near`. Type `LOCK`. It is done when it prints `Collection access keys: 0`.
-12. Run `OWNER_RUN=1 ./scripts/mainnet.sh mint-proof <your-account>.near`. Type `MINT`. It creates a vault titled `Example vault` with a 30-day lock and prints its id.
-13. Run `./scripts/local-real-gift.sh <proof-vault-id>`.
-14. Start a screen recording with QuickTime. Show your Base wallet and the gift page. Hide seed words, email and other accounts.
-15. Send the $5 gift, following step 8.
-16. Stop recording when the page shows `Gift delivered`. Save it as `docs/footage/real-gift-5usd.mov`.
-17. Tell Hermes the time you sent it, the time it was delivered, and the two explorer links.
-18. On the date 30 days after step 12, run `OWNER_RUN=1 ./scripts/mainnet.sh withdraw <proof-vault-id>`. Type `WITHDRAW`. Keep your account key until then.
-
-**If step 10 is not done by 4:00 PM on 13 Nov, Hermes asks:**
-
-> The real withdrawal is not proven yet. Reply SEND to lock the collection and send the $5 now, which films on time but means the $5 depends on an untested withdrawal. Reply WAIT to delay filming. I recommend SEND, because the amount is small.
-
-**What is spent:** Up to about 6 NEAR for storage and code cannot be recovered, because the collection ends with no keys. That is about $21 at today's price. Mints and gas cost about 0.1 NEAR more. Your remaining NEAR stays in your account. USDC returns only through the withdrawals in steps 10 and 18, less small fees.
-
-**Never use a real child's name** as a vault title or nickname.
-
-**Hermes then:** reads `.state/mainnet.json`. Adds to `docs/proof.md` and `web/public/proof.json`: deployment hash, access key lists for the collection and the proof vault, code hash, gift transactions, correlation ids, and amount received. Lists the new Render settings for the owner, and opens a pull request. Every merge needs the owner's approval.
-
-**If the owner replies SKIP:** In one commit, remove `/proof`, its `FEATURES.md` row and its end-to-end test, with a note in the commit message. Use the alternative opening in section 10.
+**Dropped on 11 Nov.** The owner replied SKIP (see section 13), so nothing is deployed on mainnet and the video uses the simulated-gift opening in section 10. `scripts/mainnet.sh`, `scripts/local-real-gift.sh` and the `/proof` page are not built. `scripts/deploy.sh` signs nothing on mainnet: it accepts `mainnet` only with `--dry-run`, and the dry run is the price check. A real mainnet deploy would need a new script and a new owner decision.
 
 ### Phase 5: Video, README and post (13 Nov)
 
 Write `docs/demo-script.md` from section 10 and fill every `[N]` from the real run.
 
-- **Footage:** the owner's real-gift recording is the first 30 seconds. Hermes records testnet screens from the live site.
+- **Footage:** the owner's real-gift recording is the first 30 seconds. **Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. Use the opening for SKIP in section 10. Hermes records testnet screens from the live site.
 - **Voice:** OWNER ONLY, read the script into a QuickTime audio recording.
 - **Editing:** Hermes combines the footage and voice with ffmpeg, burns in captions, and makes a thumbnail showing the live result.
 - **Check:** a delegated helper reviews the video for any key, seed, email or private address.
@@ -693,6 +667,8 @@ Have a fresh delegated helper clone the public repository into a temporary folde
 
 ## 10. Demo script
 
+**Superseded on 11 Nov:** the owner replied SKIP, so nothing is deployed on mainnet. See the SKIP row in section 13. Use the opening for SKIP below the table. The 0:00 to 0:30 rows and the real-gift sentence in the last row do not apply.
+
 | Time | Spoken | Screen |
 |---|---|---|
 | 0:00 to 0:05 | Maya is seven, so Coinbase won't open her an account. This NFT holds her money instead. | A seed. Balance $0.00. Account keys: 0. Send a gift. Caption: "Maya is an example. Real $5 gift on NEAR mainnet. 30-day lock for this proof." |
@@ -700,8 +676,8 @@ Have a fresh delegated helper clone the public repository into a temporary folde
 | 0:30 to 1:00 | So we built Birthday Vault. The rest of this demo is on NEAR's test network. Each vault is a NEP-171 NFT tied to its own NEAR sub-account. Relatives pay through the 1Click service in NEAR Intents, and it arrives as dollars. The sub-account has no keys, so only the contract can open it, and the contract checks the date. Here's the key list. It's empty. Her parents try to withdraw early, and the contract refuses. | Key list. Refused withdrawal in the explorer. |
 | 1:00 to 1:20 | For this demo we shortened the lock to three minutes. Time's up. Transfer the NFT, and the money and the right to withdraw go with it. The old owner tries to withdraw and gets refused. The Intents fee on that five-dollar gift was [N] cents. | Unlock, transfer, refused old owner, gift receipt. |
 | 1:20 to 1:35 | If her parents lose their keys, Maya can still claim it at eighteen from the account named when the vault was made. | Child claim, from a second demo run. |
-| 1:35 to 1:45 | The money stays put until she's old enough to decide what it's for. | The tree. |
-| 1:45 to 2:00 | It holds dollars and earns nothing, so inflation eats at it. It only works if this contract and this network last eighteen years. Most of this demo runs on NEAR's test network with a shortened timer. The five-dollar gift was real, and I set that vault to open in thirty days so I can get it back. | Limits screen. |
+| 1:35 to 1:45 | Nobody can touch the money before the date her parents chose. On that date her parents can hand it to her, or Maya can claim it herself. | The tree. |
+| 1:45 to 2:00 | It holds dollars and earns nothing, so inflation eats at it. On the lock date her parents still hold the vault, so they could take the money first. It only works if this contract and this network last eighteen years. Most of this demo runs on NEAR's test network with a shortened timer. The five-dollar gift was real, and I set that vault to open in thirty days so I can get it back. | Limits screen. |
 
 **Opening if the owner replies SKIP or the real gift fails:** Start on a live testnet vault refusing an early withdrawal, so a simulated gift is never the first screen. Label the play gift "Simulated gift on NEAR's test network". Change the last line to say no real money moved.
 
@@ -768,6 +744,15 @@ Have a fresh delegated helper clone the public repository into a temporary folde
 | 10 Nov | Demo funding is 0.15, 0.12 and 0.12 NEAR, not 0.1, 0.02 and 0.03 | On testnet a 0.1 NEAR guardian could not mint: an account must hold about 0.001 NEAR per Tgas it attaches, and a mint attaches 100 Tgas plus 0.025 NEAR. Each demo now costs the hub 0.39 NEAR |
 | 11 Nov | The owner chose the real $5 gift on mainnet, not the simulated gift | The proof video opens on real money. GO MAINNET is still asked at the Phase 4 STOP, with the exact NEAR from the measured wasm sizes |
 | 11 Nov | Superseded the row above: the owner replied SKIP, so the gift is simulated and nothing is deployed on mainnet | The mainnet dry run priced the deploy at 3.30155 NEAR plus about 0.1 NEAR, which cannot be recovered. Phase 4 and its scripts are dropped; Phase 3 builds no `/proof` page; the video uses the SKIP opening in section 10. `hugegrain4592.near` stays the prize account and needs no NEAR |
+| 11 Nov | The public testnet collection is `g2.birthday-vault-zr1109.testnet`, locked with 0 access keys. `g1` stays as the rehearsal collection and keeps its key | The page needs a collection nobody can change. g1 was the first rehearsal and has not been locked |
+| 11 Nov | The web settings use the names `setup-hub.sh` already writes: `NEXT_PUBLIC_NETWORK`, `NEXT_PUBLIC_HUB_ID`, `NEXT_PUBLIC_USDC_ID` and `NEXT_PUBLIC_HUB_KEYS`, plus `NEXT_PUBLIC_COLLECTION_ID`, `NEXT_PUBLIC_DEMO_RPC_URLS` and `NEXT_PUBLIC_LOCK_SECONDS` | One set of names for the scripts, the site and Render. Section 7's `NEXT_PUBLIC_TUSDC_ID` and `NEXT_PUBLIC_DEMO_KEYS` are replaced |
+| 11 Nov | The end-to-end tests start their sandbox with the Rust launcher `tests/examples/e2e_sandbox.rs` (near-workspaces), not the npm `near-sandbox` package | It reuses the sandbox and deploy code that the 82 contract tests already prove, including global contracts. The launcher's hub keys exist only in that throwaway sandbox |
+| 11 Nov | The site has no deposit-address, QR or status-polling code at all, only `dry: true` preview quotes | Real gifts are dropped (SKIP), so `NEXT_PUBLIC_REAL_GIFTS` is not needed. The e2e test proves no `dry: false` request is ever sent |
+| 11 Nov | The repository is MIT licensed | Section 9 Phase 3 asks for a LICENSE; MIT is the common choice for hackathon code and lets judges rebuild it |
+| 11 Nov | Disclose that the guardian can withdraw on the lock date, instead of changing the contract | Contract changes have been frozen since the 10 Nov cutoff, and the video promised the child the money |
+| 11 Nov | No Rust unit-test layer: every contract rule, including T9's Production rules, is tested in the sandbox, and T26 has no test of its own | near-sdk refuses a native build without its unit-testing feature. T9 runs on a `bv.near` id written into sandbox state. The sandbox cannot hold back global code distribution, so T26's refund path is covered by `mint_fails_cleanly_if_account_exists` |
+| 11 Nov | The morning demo-supply check also reads the tUSDC account | tUSDC pays for each demo's 3 registrations from its own balance. setup-hub.sh funded it for about 78 demos; it was topped up to 11.77 testnet NEAR on 11 Nov |
+| 11 Nov | `deploy.sh` signs nothing on mainnet: it refuses `mainnet` unless the option is `--dry-run`, and refuses any unknown option | `mainnet.sh` and its typed-word second factor were dropped with SKIP, which left `OWNER_RUN=1` as the only guard before real mainnet spending |
 | 9 Nov | The demo hub takes its time windows and limits at init: one hour, one day, 20 and 100 on testnet | Tests can then prove the rolling limits in seconds instead of hours. There is still no setter |
 | 9 Nov | T10 and the transfer and claim parts of T11 are tested in step S7, and T21 in the web phase | They need transfers and the claim. The contract returns no balances, so the page does the counting |
 | 11 Nov | The licence is MIT, copyright 2026 Zaeem Khan. The tag `pre-hackathon` points at the empty `init` commit `5a06c27` | The event accepts any licence and names MIT as fine. MIT also matches Deed and near-sdk-rs, which the code credits. The `init` commit holds no code, so every file in the repository counts as new work |

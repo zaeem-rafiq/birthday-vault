@@ -69,6 +69,7 @@ call "$G" "$(sk guardian)" "$USDC" ft_transfer "{\"receiver_id\":\"$VAULT\",\"am
 expect_balance "$VAULT" 1000000 "vault"
 
 echo "4. An early withdrawal must fail"
+: > "$LOG"   # so the check below sees only this call's output
 if call "$G" "$(sk guardian)" "$COLL" withdraw "{\"token_id\":\"$TOKEN\",\"ft_contract\":\"$USDC\",\"amount\":\"250000\"}" '1 yoctoNEAR' '100 Tgas'; then
   fail "the early withdrawal succeeded"
 fi
