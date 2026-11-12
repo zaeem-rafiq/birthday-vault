@@ -1,0 +1,44 @@
+//! Universal account (`0u`) state initialization types ([NEP-655]).
+//!
+//! A universal account is a post-quantum-safe successor to implicit and deterministic accounts:
+//! its address is `0u` followed by the Crockford base32 encoding of the SHA3-256 hash of the
+//! borsh-serialized state init that creates it.
+//!
+//! [`RawStateInit`] holds those bytes. It is what the action carries, what the host functions
+//! take and what the id commits to, so it is also the type to accept in contract arguments (JSON
+//! as base64) and to forward unchanged. [`UniversalStateInit`] and [`UniversalStateInitV1`] build
+//! and decode it, with typed JSON for builders and inspection. Typed serde does not prove that
+//! incoming raw bytes were canonical. Use [`RawStateInit::try_derive_account_id`] to reject
+//! malformed or noncanonical input before presenting an address for funding. Preserve the
+//! original bytes when forwarding; local validation rejects versions this SDK cannot decode.
+//!
+//! The types live in the [`near_global_contracts`](https://docs.rs/near-global-contracts) crate
+//! ([`RawStateInit`], [`UniversalStateInit`], [`UniversalStateInitV1`]) and in
+//! [`near_sdk_core`](https://docs.rs/near-sdk-core) ([`PublicKeyHandle`], next to
+//! [`PublicKey`](crate::PublicKey)); they are re-exported here for convenience.
+//!
+//! Universal accounts are created with
+//! [`Promise::universal_state_init`](crate::Promise::universal_state_init) (or the lower-level
+//! [`env::promise_batch_action_universal_state_init`](crate::env::promise_batch_action_universal_state_init))
+//! on a promise whose receiver is the id of the same bytes, computed with
+//! [`RawStateInit::try_derive_account_id`] or the
+//! [`env::universal_state_init_to_account_id`](crate::env::universal_state_init_to_account_id)
+//! host function. Both reject malformed and non-canonical bytes with a [`StateInitError`]; the
+//! host function also knows state-init versions this SDK predates. Neither establishes that
+//! initialization will succeed: limits, code availability and funding are checked when the action
+//! runs.
+//!
+//! # Requirements
+//!
+//! This module is available when the `universal-accounts` feature is enabled on `near-sdk`. The
+//! feature makes every [`Promise`](crate::Promise) link the universal state init host function,
+//! so a contract built with it requires the host to support universal accounts (nearcore
+//! protocol version 88+, shipped in nearcore 2.14) even if it never creates one. The host checks
+//! canonicality from protocol version 88.
+//!
+//! [NEP-655]: https://github.com/near/NEPs/pull/655
+
+pub use near_global_contracts::{
+    RawStateInit, StateInitError, UniversalStateInit, UniversalStateInitV1,
+};
+pub use near_sdk_core::types::{ParsePublicKeyError, PublicKeyHandle};

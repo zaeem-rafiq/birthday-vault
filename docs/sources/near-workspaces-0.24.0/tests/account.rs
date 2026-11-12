@@ -1,0 +1,167 @@
+#![recursion_limit = "256"]
+use near_token::NearToken;
+use near_workspaces::types::{AccessKey, KeyType, SecretKey};
+use serde_json::{Map, Value};
+use test_log::test;
+
+use std::fs::{self, File};
+use std::path::Path;
+
+#[test(tokio::test)]
+async fn test_subaccount_creation() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let account = worker.dev_create_account().await?;
+
+    let sub = account
+        .create_subaccount("subaccount")
+        .transact()
+        .await?
+        .into_result()?;
+
+    let expect_id = format!("subaccount.{}", account.id());
+    let actual_id = sub.id().to_string();
+
+    assert_eq!(actual_id, expect_id);
+
+    // Check if the stored credentials match with the subaccount created.
+    let savedir = Path::new("../target/credentials");
+    sub.store_credentials(savedir).await?;
+    let creds = File::open(savedir.join(format!("{}.json", sub.id())))?;
+    let contents: Map<String, Value> = serde_json::from_reader(creds)?;
+    assert_eq!(
+        contents.get("account_id"),
+        Some(&Value::String(sub.id().to_string()))
+    );
+
+    fs::remove_file(savedir.join(format!("{}.json", sub.id())))?;
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn test_transfer_near() -> anyhow::Result<()> {
+    const INITIAL_BALANCE: NearToken = NearToken::from_near(100);
+
+    let worker = near_workspaces::sandbox().await?;
+    let (alice, bob) = (
+        worker.dev_create_tla().await?,
+        worker.dev_create_tla().await?,
+    );
+
+    assert_eq!(alice.view_account().await?.balance, INITIAL_BALANCE);
+    assert_eq!(bob.view_account().await?.balance, INITIAL_BALANCE);
+
+    const SENT_AMOUNT: NearToken = NearToken::from_yoctonear(500_000_000);
+
+    // transfer 500_000_000 token from alice to bob
+    let _ = alice.transfer_near(bob.id(), SENT_AMOUNT).await?;
+
+    // Assert the tokens have been transferred.
+    assert_eq!(
+        bob.view_account().await?.balance,
+        INITIAL_BALANCE.saturating_add(SENT_AMOUNT),
+    );
+
+    // We can only assert that the balance is less than the initial balance - sent amount because of the gas fees.
+    assert!(alice.view_account().await?.balance <= INITIAL_BALANCE.saturating_sub(SENT_AMOUNT));
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn test_mldsa65_access_key_on_chain() -> anyhow::Result<()> {
+    // ML-DSA-65 (FIPS 204) access keys were stabilized in nearcore 2.13
+    // (protocol v86). The default sandbox() now resolves to the stable
+    // 2.13.0 binary, which has the scheme.
+    let worker = near_workspaces::sandbox().await?;
+    let root = worker.root_account()?;
+
+    // Fund a fresh subaccount whose full-access key is post-quantum.
+    let sk = SecretKey::from_random(KeyType::MLDSA65);
+    let sub = root
+        .create_subaccount("pqkey")
+        .keys(sk.clone())
+        .initial_balance(NearToken::from_near(10))
+        .transact()
+        .await?
+        .into_result()?;
+
+    // The on-chain account is keyed with ML-DSA-65.
+    assert!(matches!(sub.secret_key().key_type(), KeyType::MLDSA65));
+
+    // Signing a real transfer forces the sandbox to verify an ML-DSA-65
+    // signature; this is the actual proof the scheme works end-to-end.
+    sub.transfer_near(root.id(), NearToken::from_near(1))
+        .await?
+        .into_result()?;
+
+    // After sending 1 NEAR (plus gas) the subaccount must hold under 9 NEAR.
+    let remaining = sub.view_account().await?.balance;
+    assert!(
+        remaining < NearToken::from_near(9),
+        "expected balance below 9 NEAR after the transfer, got {remaining}"
+    );
+
+    // The account's only access key is ML-DSA-65, whose full public key cannot
+    // be recovered from the on-trie hash. Listing keys must return an error
+    // gracefully rather than panicking.
+    assert!(
+        sub.view_access_keys().await.is_err(),
+        "listing a hash-only ML-DSA-65 access key should error, not panic"
+    );
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn test_view_access_keys_paginated() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+    let account = worker.dev_create_account().await?;
+
+    // More keys than the node returns per page, split across two transactions
+    // to stay under the per-receipt action limit.
+    for _ in 0..2 {
+        let mut tx = account.batch(account.id());
+        for _ in 0..75 {
+            let pk = SecretKey::from_random(KeyType::ED25519).public_key();
+            tx = tx.add_key(pk, AccessKey::full_access());
+        }
+        tx.transact().await?.into_result()?;
+    }
+
+    let keys = account.view_access_keys().await?;
+    assert_eq!(keys.len(), 151);
+
+    Ok(())
+}
+
+#[test(tokio::test)]
+async fn test_delete_account() -> anyhow::Result<()> {
+    let worker = near_workspaces::sandbox().await?;
+
+    let (alice, bob) = (
+        worker.dev_create_account().await?,
+        worker.dev_create_account().await?,
+    );
+
+    _ = alice.clone().delete_account(bob.id()).await?;
+
+    // Alice's account should be deleted.
+    let res = alice.view_account().await;
+
+    assert!(res.is_err());
+
+    assert!(
+        res.unwrap_err()
+            .into_inner()
+            .unwrap()
+            .to_string()
+            .contains(&format!("{} does not exist while viewing", alice.id())),
+    );
+
+    // All sandbox accounts start with a balance of 100 NEAR tokens.
+    // On account deletion, alice's balance is debited to bob as beneficiary.
+    assert!(bob.view_account().await?.balance > NearToken::from_near(100));
+
+    Ok(())
+}
